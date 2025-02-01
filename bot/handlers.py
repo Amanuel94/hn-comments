@@ -1,5 +1,5 @@
-import requests
-from telegram.constants import ParseMode
+from telebot.util import quick_markup
+
 from .api import get_comment, get_kids, get_user_karma
 from .commands import cmds
 from .config import DEFAULT_PAGE_SIZE, bot
@@ -27,7 +27,11 @@ async def get_comments(message, page_size = DEFAULT_PAGE_SIZE, page = 0):
                 parse_xml(comment['text']),
                 comment['time']
             )
-            await bot.reply_to(message, msg, parse_mode="Markdown")
+
+            markup = quick_markup(
+                { 'Read on site': {'url': item_url(comment['id'])}}, row_width=1)
+
+            await bot.reply_to(message, msg, parse_mode="Markdown", reply_markup = markup)
     except Exception as e:
        raise e
 

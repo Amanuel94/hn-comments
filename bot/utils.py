@@ -25,8 +25,8 @@ def parse_xml(xml):
     return html.unescape(BeautifulSoup(xml, 'html.parser').text)
 
 def user_url(id):
-    return f'{HN_URL}/user?id={id}'
+    return f'{HN_URL}user?id={id}'
 
 def item_url(id):
-    return f'{HN_URL}/item?id={id}'
+    return f'{HN_URL}item?id={id}'
     
