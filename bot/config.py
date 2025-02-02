@@ -10,6 +10,7 @@ DEFAULT_PAGE_SIZE = 5
 API_VERSION = "v0"
 BASE_API_URL = f" https://hacker-news.firebaseio.com/{API_VERSION}/"
 HN_URL = "https://news.ycombinator.com/"
-
+RATE_LIMIT = 1
+TIME_FRAME = 60
 
 bot = AsyncTeleBot(API_TOKEN)

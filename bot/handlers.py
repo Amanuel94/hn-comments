@@ -6,6 +6,7 @@ import time
 from .api import get_comment, get_info, get_user_karma
 from .commands import cmds
 from .config import DB_NAME, DEFAULT_PAGE_SIZE, bot
+from .middleware import rate_limiter
 from .utils import get_args, template, user_url, item_url, parse_xml
 from database import Database
 
@@ -63,7 +64,6 @@ async def list_comments(iid, message: Message, page=0, page_size=DEFAULT_PAGE_SI
 
 
 async def save_story(db, iid, userid):
-    # print("here")
     return db.insert(userid, iid)
 
 
@@ -75,15 +75,24 @@ async def list_bookmarks(db, userid):
     return db.search(userid)
 
 
-@bot.message_handler(commands=["help", "start"])
-async def send_welcome(message):
+# handlers
 
-    args = get_args(message.text)
-    if args:
-        if args[0].startswith(cmds["list"]["name"]):
-            iid, *opts = get_args(args[0], delimiter="_")
-            await list_comments(iid, message)
-        return
+
+@bot.message_handler(commands=["help", "start"])
+@rate_limiter
+async def send_welcome(message):
+    try:
+        args = get_args(message.text)
+        if args:
+            if args[0].startswith(cmds["list"]["name"]):
+                iid, *_ = get_args(args[0], delimiter="_")
+                await list_comments(iid, message)
+            elif args[0].startswith(cmds["bookmark"]["name"]):
+                iid, *_ = get_args(args[0], delimiter="_")
+                await save_story(iid, message.chat.id)
+            return
+    except Exception as e:
+        await bot.send_message(message.chat.id, text=f"An error occurred: {str(e)}")
 
     text = "Welcome! This bot fetches comments from Hacker News.\n\n"
     await bot.send_message(message.chat.id, text)
@@ -108,6 +117,7 @@ async def list_callback(call):
 
 
 @bot.message_handler(commands=[cmds["bookmark"]["name"]])
+@rate_limiter
 async def bookmark(message):
     args = get_args(message.text)
     if not args:
@@ -130,6 +140,7 @@ async def bookmark(message):
 
 
 @bot.message_handler(commands=[cmds["bookmarks"]["name"]])
+@rate_limiter
 async def bookmarks(message):
     with Database(DB_NAME) as db:
         res = await list_bookmarks(db, message.chat.id)
@@ -148,6 +159,7 @@ async def bookmarks(message):
 
 
 @bot.message_handler(commands=[cmds["delete"]["name"]])
+@rate_limiter
 async def delete(message):
     args = get_args(message.text)
     if not args:

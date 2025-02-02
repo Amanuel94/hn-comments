@@ -1,2 +1,2 @@
 from .config import bot
-from .handlers import send_welcome, get_comments
+from .handlers import bookmark, bookmarks, delete, get_comments, send_welcome
