@@ -2,7 +2,7 @@ import html
 from datetime import datetime
 from bs4 import BeautifulSoup
 
-from .config import HN_URL
+from .config import HN_URL, logger
 
 
 def slug(x: str, kid: int) -> str:
@@ -28,13 +28,16 @@ def template(luser, karma, by, text, time):
         msg += f"**{time}**\n"
         return msg
     except Exception as e:
-        return f"An error occurred: {str(e)}"
+        return logger.error(f"An error occurred: {str(e)} - template")
 
 
 def parse_xml(xml):
     try:
         return html.unescape(BeautifulSoup(xml, "html.parser").text)
     except Exception as e:
+        logger.warning(
+            f"An error occurred while parsing a comment: {str(e)} - parse_xml"
+        )
         return xml
 
 

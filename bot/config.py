@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+import logging
 import os
 from telebot.async_telebot import AsyncTeleBot
 
@@ -14,3 +15,14 @@ RATE_LIMIT = 50
 TIME_FRAME = 60  # seconds
 
 bot = AsyncTeleBot(API_TOKEN)
+
+# Logger setup
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+filehandler = logging.FileHandler("bot.log")
+consolehandler = logging.StreamHandler()
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+filehandler.setFormatter(formatter)
+consolehandler.setFormatter(formatter)
+logger.addHandler(filehandler)
+logger.addHandler(consolehandler)

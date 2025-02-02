@@ -1,6 +1,8 @@
 import sqlite3
 from contextlib import ContextDecorator
 
+from bot.config import logger
+
 
 class Database(ContextDecorator):
     def __init__(self, db):
@@ -31,13 +33,17 @@ class Database(ContextDecorator):
                 (userid, iid),
             )
             self.conn.commit()
-            print(f"Record inserted: userid={userid}, iid={iid}")
+            logger.info(f"Record inserted: userid={userid}, iid={iid}")
             return True
         except sqlite3.Error as e:
-            print(f"Database error: {e}")
+            logger.error(
+                f"Database error: {e} - insert_bookmark: userid={userid}, iid={iid}"
+            )
             return False
         except Exception as e:
-            print(f"Unexpected error: {e}")
+            logger.error(
+                f"Unexpected error: {e} - insert_bookmark: userid={userid}, iid={iid}"
+            )
             return False
 
     def search_bookmark(self, userid=""):
@@ -47,12 +53,13 @@ class Database(ContextDecorator):
                 (userid,),
             )
             rows = self.cur.fetchall()
+            logger.info(f"Record found: userid={userid}, rows={rows}")
             return rows
         except sqlite3.Error as e:
-            print(f"Database error: {e}")
+            logger.error(f"Database error: {e} - search_bookmark: userid={userid}")
             return []
         except Exception as e:
-            print(f"Unexpected error: {e}")
+            logger.error(f"Unexpected error: {e} - search_bookmark: userid={userid}")
             return []
 
     def delete_bookmark(self, iid, userid):
@@ -61,13 +68,17 @@ class Database(ContextDecorator):
                 "DELETE FROM bookmarks WHERE iid=? AND userid = ? ", (iid, userid)
             )
             self.conn.commit()
-            print(f"Record deleted: userid={userid}, iid={iid}")
+            logger.info(f"Record deleted: userid={userid}, iid={iid}")
             return True
         except sqlite3.Error as e:
-            print(f"Database error: {e}")
+            logger.error(
+                f"Database error: {e} - delete_bookmark: userid={userid}, iid={iid}"
+            )
             return False
         except Exception as e:
-            print(f"Unexpected error: {e}")
+            logger.error(
+                f"Unexpected error: {e} - delete_bookmark: userid={userid}, iid={iid}"
+            )
             return False
 
     def search_page(self, userid):
@@ -79,10 +90,10 @@ class Database(ContextDecorator):
             rows = self.cur.fetchall()
             return rows
         except sqlite3.Error as e:
-            print(f"Database error: {e}")
+            logger.error(f"Database error: {e} - search_page: userid={userid}")
             return []
         except Exception as e:
-            print(f"Unexpected error: {e}")
+            logger.error(f"Unexpected error: {e} - search_page: userid={userid}")
             return []
 
     def upsert_page(self, userid, page):
@@ -98,7 +109,7 @@ class Database(ContextDecorator):
                     (page, userid),
                 )
                 self.conn.commit()
-                print(f"Record updated: userid={userid}, page={page}")
+                logger.info(f"Record updated: userid={userid}, page={page}")
                 return True
 
             self.cur.execute(
@@ -106,13 +117,17 @@ class Database(ContextDecorator):
                 (userid, page),
             )
             self.conn.commit()
-            print(f"Record inserted: userid={userid}, page={page}")
+            logger.info(f"Record inserted: userid={userid}, page={page}")
             return True
         except sqlite3.Error as e:
-            print(f"Database error: {e}")
+            logger.error(
+                f"Database error: {e} - upsert_page: userid={userid}, page={page}"
+            )
             return False
         except Exception as e:
-            print(f"Unexpected error: {e}")
+            logger.error(
+                f"Unexpected error: {e} - upsert_page: userid={userid}, page={page}"
+            )
             return False
 
     def __del__(self):
