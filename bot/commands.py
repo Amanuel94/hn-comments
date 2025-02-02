@@ -23,4 +23,8 @@ cmds = {
         "name": "del",
         "description": "Delete a bookmark",
     },
+    "setpage": {
+        "name": "setpage",
+        "description": "Set the page size",
+    },
 }

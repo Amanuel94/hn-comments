@@ -18,17 +18,24 @@ def get_args(msg, delimiter=" "):
 
 
 def template(luser, karma, by, text, time):
-    time = datetime.fromtimestamp(time).strftime("%Y-%m-%d %H:%M:%S")
-    msg = ""
-    msg += f"By **[{by}]({luser})**  ⭐️ {karma} \n"
-    msg += "\n"
-    msg += f"{text}\n\n"
-    msg += f"**{time}**\n"
-    return msg
+    try:
+        time = int(time)
+        time = datetime.fromtimestamp(time).strftime("%Y-%m-%d %H:%M:%S")
+        msg = ""
+        msg += f"By **[{by}]({luser})**  ⭐️ {karma} \n"
+        msg += "\n"
+        msg += f"{text}\n\n"
+        msg += f"**{time}**\n"
+        return msg
+    except Exception as e:
+        return f"An error occurred: {str(e)}"
 
 
 def parse_xml(xml):
-    return html.unescape(BeautifulSoup(xml, "html.parser").text)
+    try:
+        return html.unescape(BeautifulSoup(xml, "html.parser").text)
+    except Exception as e:
+        return xml
 
 
 def user_url(uid):

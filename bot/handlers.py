@@ -11,12 +11,14 @@ from .utils import get_args, template, user_url, item_url, parse_xml
 from database import Database
 
 
-async def list_comments(iid, message: Message, page=0, page_size=DEFAULT_PAGE_SIZE):
+async def list_comments(iid, message: Message, page=0):
 
     message = await bot.send_message(message.chat.id, text="Fetching comments...")
 
     res = await asyncio.create_task(get_info(iid))
     item = json.loads(res.content)
+    with Database(DB_NAME) as db:
+        page_size = await get_page_size(db, message.chat.id) or DEFAULT_PAGE_SIZE
     kids, title = item["kids"][page : page + page_size], item["title"]
 
     if not kids:
@@ -37,22 +39,28 @@ async def list_comments(iid, message: Message, page=0, page_size=DEFAULT_PAGE_SI
                 chat_id=message.chat.id,
                 message_id=message.message_id,
                 text=f"*Story: {title}*\n*Comments {page+1} - {page+page_size}*",
+                parse_mode="Markdown",
             )
 
         comment = json.loads(comment.content)
+        if comment.get("deleted", False):
+            continue
 
         msg = template(
-            user_url(comment["by"]),
-            get_user_karma(comment["by"]),
-            comment["by"],
-            parse_xml(comment["text"]),
+            user_url(comment.get("by", "")),
+            get_user_karma(comment.get("by", "")),
+            comment.get("by", "user not found"),
+            parse_xml(comment.get("text", "text not found")),
             comment["time"],
         )
 
         markup = quick_markup(
             {"Read on site": {"url": item_url(comment["id"])}}, row_width=1
         )
-        await bot.reply_to(message, msg, parse_mode="Markdown", reply_markup=markup)
+        try:
+            await bot.reply_to(message, msg, parse_mode="Markdown", reply_markup=markup)
+        except Exception as e:
+            await bot.reply_to(message, msg, reply_markup=markup)
 
     next_btn = quick_markup(
         {"Next": {"callback_data": f"list_{iid}_{page+page_size}"}},
@@ -63,16 +71,27 @@ async def list_comments(iid, message: Message, page=0, page_size=DEFAULT_PAGE_SI
     )
 
 
-async def save_story(db, iid, userid):
-    return db.insert(userid, iid)
+async def save_story(db: Database, iid, userid):
+    return db.insert_bookmark(userid, iid)
 
 
-async def delete_story(db, iid, userid):
-    return db.delete(iid, userid)
+async def delete_story(db: Database, iid, userid):
+    return db.delete_bookmark(iid, userid)
 
 
-async def list_bookmarks(db, userid):
-    return db.search(userid)
+async def list_bookmarks(db: Database, userid):
+    return db.search_bookmark(userid)
+
+
+async def get_page_size(db: Database, userid):
+    res = db.search_page(userid)
+    if res:
+        return res[0][2]
+    return None
+
+
+async def set_page_size(db: Database, userid, page_size):
+    return db.upsert_page(userid, page_size)
 
 
 # handlers
@@ -99,6 +118,7 @@ async def send_welcome(message):
 
 
 @bot.message_handler(commands=[cmds["list"]["name"]])
+@rate_limiter
 async def get_comments(message):
     args = get_args(message.text)
     iid, *(opts) = args
@@ -176,3 +196,31 @@ async def delete(message):
             return
 
     await bot.send_message(message.chat.id, text="Bookmark deleted")
+
+
+@bot.message_handler(commands=[cmds["setpage"]["name"]])
+@rate_limiter
+async def set_page(message):
+    args = get_args(message.text)
+    if not args:
+        await bot.send_message(message.chat.id, text="Please provide a page size")
+        return
+
+    try:
+        x = int(args[0])
+        with Database(DB_NAME) as db:
+            res = await set_page_size(db, message.chat.id, x)
+            if not res:
+                await bot.send_message(
+                    message.chat.id,
+                    text="Failed to set page size. Please try again",
+                )
+                return
+    except ValueError:
+        await bot.send_message(message.chat.id, text="Please provide a valid number")
+        return
+    except Exception as e:
+        await bot.send_message(message.chat.id, text=f"An error occurred: {str(e)}")
+        return
+
+    await bot.send_message(message.chat.id, text="Page size set")

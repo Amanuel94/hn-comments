@@ -9,9 +9,13 @@ class Database(ContextDecorator):
         self.cur.execute(
             "CREATE TABLE IF NOT EXISTS bookmarks (id INTEGER PRIMARY KEY, userid INTEGER, iid INTEGER);"
         )
+
+        self.cur.execute(
+            "CREATE TABLE IF NOT EXISTS pages (id INTEGER PRIMARY KEY, userid INTEGER, page INTEGER);"
+        )
         self.conn.commit()
 
-    def insert(self, userid, iid):
+    def insert_bookmark(self, userid, iid):
         try:
             self.cur.execute(
                 "SELECT * FROM bookmarks WHERE userid=? AND iid=?",
@@ -36,7 +40,7 @@ class Database(ContextDecorator):
             print(f"Unexpected error: {e}")
             return False
 
-    def search(self, userid=""):
+    def search_bookmark(self, userid=""):
         try:
             self.cur.execute(
                 "SELECT * FROM bookmarks WHERE userid=?",
@@ -51,13 +55,58 @@ class Database(ContextDecorator):
             print(f"Unexpected error: {e}")
             return []
 
-    def delete(self, iid, userid):
+    def delete_bookmark(self, iid, userid):
         try:
             self.cur.execute(
                 "DELETE FROM bookmarks WHERE iid=? AND userid = ? ", (iid, userid)
             )
             self.conn.commit()
             print(f"Record deleted: userid={userid}, iid={iid}")
+            return True
+        except sqlite3.Error as e:
+            print(f"Database error: {e}")
+            return False
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            return False
+
+    def search_page(self, userid):
+        try:
+            self.cur.execute(
+                "SELECT * FROM pages WHERE userid=?",
+                (userid,),
+            )
+            rows = self.cur.fetchall()
+            return rows
+        except sqlite3.Error as e:
+            print(f"Database error: {e}")
+            return []
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            return []
+
+    def upsert_page(self, userid, page):
+        try:
+            self.cur.execute(
+                "SELECT * FROM pages WHERE userid=?",
+                (userid,),
+            )
+            rows = self.cur.fetchall()
+            if rows:
+                self.cur.execute(
+                    "UPDATE pages SET page=? WHERE userid=?",
+                    (page, userid),
+                )
+                self.conn.commit()
+                print(f"Record updated: userid={userid}, page={page}")
+                return True
+
+            self.cur.execute(
+                "INSERT INTO pages (userid, page) VALUES (?, ?)",
+                (userid, page),
+            )
+            self.conn.commit()
+            print(f"Record inserted: userid={userid}, page={page}")
             return True
         except sqlite3.Error as e:
             print(f"Database error: {e}")
