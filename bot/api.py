@@ -1,19 +1,25 @@
-import json, requests
+import aiohttp
+import asyncio, json, requests
 from .config import BASE_API_URL
 from .utils import slug
 
-def get_comment(id):
-    req = BASE_API_URL + slug('item', id)
-    resp = requests.get(req)
-    return json.loads(resp.content)
+# async def fetch(session, url):
+#     async with session.get(url) as response:
+#         return await response.content
 
-def get_kids(id):
+async def get_comment(id):
     req = BASE_API_URL + slug('item', id)
-    resp = requests.get(req)
-    return json.loads(resp.content)['kids']
+    task = requests.get(req)
+    return task
+
+async def get_info(id):
+    req = BASE_API_URL + slug('item', id)
+    task = requests.get(req)
+    return task
+    
 
 def get_user_karma(id):
     req = BASE_API_URL + slug('user', id)
-    resp = requests.get(req)
-    return json.loads(resp.content)['karma']
+    task = requests.get(req)
+    return json.loads(task.content)['karma']
 

@@ -1,32 +1,39 @@
-from datetime import datetime
-from .config import HN_URL
-
 import html
+from datetime import datetime
 from bs4 import BeautifulSoup
 
+from .config import HN_URL
 
-def slug(x, id):
-    return f'{x}/{id}.json' 
 
-def get_arg(msg):
-    msg = " ".join(msg.strip().split(' ')[1:])
-    return msg
+def slug(x: str, kid: int) -> str:
+    return f"{x}/{kid}.json"
 
-def template(luser, lcomment, karma, by, text, time):
-    time = datetime.fromtimestamp(time).strftime('%Y-%m-%d %H:%M:%S')
+
+def get_args(msg, delimiter=" "):
+
+    stripped = msg.strip().split(delimiter)
+    if len(stripped) > 1:
+        return stripped[1:]
+    return None
+
+
+def template(luser, karma, by, text, time):
+    time = datetime.fromtimestamp(time).strftime("%Y-%m-%d %H:%M:%S")
     msg = ""
-    msg += f"User: **[{by}]({luser})**:  ⭐️ {karma} \n"
+    msg += f"By **[{by}]({luser})**  ⭐️ {karma} \n"
     msg += "\n"
-    msg += f"{text}\n"
+    msg += f"{text}\n\n"
     msg += f"**{time}**\n"
     return msg
 
+
 def parse_xml(xml):
-    return html.unescape(BeautifulSoup(xml, 'html.parser').text)
+    return html.unescape(BeautifulSoup(xml, "html.parser").text)
 
-def user_url(id):
-    return f'{HN_URL}user?id={id}'
 
-def item_url(id):
-    return f'{HN_URL}item?id={id}'
-    
+def user_url(uid):
+    return f"{HN_URL}user?id={uid}"
+
+
+def item_url(iid):
+    return f"{HN_URL}item?id={iid}"
