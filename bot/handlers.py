@@ -203,6 +203,11 @@ async def bookmark(message):
 
         await bot.send_message(message.chat.id, text="Bookmarking story...")
         iid = args[0]
+        if not iid.isdigit():
+            await bot.send_message(
+                message.chat.id, text="Please provide a valid story id"
+            )
+            return
 
         with Database(DB_NAME) as db:
             res = await save_story(db, iid, message.chat.id)
