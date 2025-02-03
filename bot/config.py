@@ -18,7 +18,7 @@ bot = AsyncTeleBot(API_TOKEN)
 
 # Logger setup
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.WARNING)
 filehandler = logging.FileHandler("bot.log")
 consolehandler = logging.StreamHandler()
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
