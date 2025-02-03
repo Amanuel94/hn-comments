@@ -148,7 +148,7 @@ async def send_welcome(message):
         await bot.send_message(message.chat.id, text=f"An error occurred: {str(e)}")
         return
 
-    text = "Welcome! This bot fetches comments from Hacker News.\n\n"
+    text = "Welcome! See /help to see all commands.\n\n"
     await bot.send_message(message.chat.id, text)
 
 
