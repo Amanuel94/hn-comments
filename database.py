@@ -5,6 +5,7 @@ from bot.config import logger
 
 
 class Database(ContextDecorator):
+
     def __init__(self, db):
         self.conn = sqlite3.connect(db)
         self.cur = self.conn.cursor()
@@ -33,11 +34,14 @@ class Database(ContextDecorator):
                 (userid, iid),
             )
             self.conn.commit()
-            logger.info(f"Record inserted: userid={userid}, iid={iid}")
+            logger.info("Record inserted: userid=%s, iid=%s", userid, iid)
             return True
         except sqlite3.Error as e:
             logger.error(
-                f"Database error: {e} - insert_bookmark: userid={userid}, iid={iid}"
+                "Database error: %s - insert_bookmark: userid=%s, iid=%s",
+                e,
+                userid,
+                iid,
             )
             return False
         except Exception as e:

@@ -2,29 +2,36 @@ cmds = {
     "start": {
         "name": "start",
         "description": "starts the bot",
+        "usage": "/start",
     },
     "help": {
         "name": "help",
-        "descriptio": "help",
+        "description": "list all commands",
+        "usage": "/help",
     },
     "list": {
         "name": "list",
-        "description": "List the kids of a given story",
+        "description": "lists the top level comment of a given story",
+        "usage": "/list <story id>",
     },
     "bookmark": {
         "name": "bookmark",
-        "description": "Bookmark a story",
+        "description": "bookmarks a story",
+        "usage": "/bookmark <story id>",
     },
     "bookmarks": {
         "name": "bookmarks",
-        "description": "List all bookmarks",
+        "description": "list all bookmarks",
+        "usage": "/bookmarks",
     },
     "delete": {
         "name": "del",
-        "description": "Delete a bookmark",
+        "description": "deletes a bookmark",
+        "usage": "/del <story id>",
     },
     "setpage": {
         "name": "setpage",
-        "description": "Set the page size",
+        "description": "set the page size",
+        "usage": "/setpage <page size>",
     },
 }

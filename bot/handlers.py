@@ -126,7 +126,7 @@ async def set_page_size(db: Database, userid, page_size):
 # handlers
 
 
-@bot.message_handler(commands=["help", "start"])
+@bot.message_handler(commands=["start"])
 @rate_limiter
 async def send_welcome(message):
     try:
@@ -150,6 +150,19 @@ async def send_welcome(message):
 
     text = "Welcome! This bot fetches comments from Hacker News.\n\n"
     await bot.send_message(message.chat.id, text)
+
+
+@bot.message_handler(commands=[cmds["help"]["name"]])
+@rate_limiter
+async def help(message):
+    text = "**Commands**:\n\n"
+    for cmd in cmds.values():
+        text += f"/{cmd['name']} - {cmd['description']}\n"
+        if cmd.get("usage"):
+            text += f"Usage: {cmd['usage']}\n"
+        text += "\n"
+
+    await bot.send_message(message.chat.id, text, parse_mode="Markdown")
 
 
 @bot.message_handler(commands=[cmds["list"]["name"]])
