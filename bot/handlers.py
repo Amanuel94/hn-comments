@@ -85,6 +85,11 @@ async def list_comments(iid, message: Message, page=0):
 
 
 async def save_story(db: Database, iid, userid):
+    res = json.loads(await get_info(iid))
+    if res.status_code != 200:
+        logger.warning(f"Failed to fetch story: {iid} - save_story")
+        return False
+
     res = db.insert_bookmark(userid, iid)
     if not res:
         logger.warning(
