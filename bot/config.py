@@ -21,7 +21,7 @@ PORT = 8443
 if DEVELOPMENT:
     WEBHOOK_URL = "https://smooth-beans-train.loca.lt/webhook"
 else:
-    WEBHOOK_URL = ""
+    WEBHOOK_URL = "https://hn-comments.onrender.com/webhook"
 
 
 bot = AsyncTeleBot(API_TOKEN)
