@@ -15,12 +15,20 @@ BASE_API_URL = f" https://hacker-news.firebaseio.com/{API_VERSION}/"
 HN_URL = "https://news.ycombinator.com/"
 RATE_LIMIT = 30
 TIME_FRAME = 60  # seconds
+HOST = "0.0.0.0"
+PORT = 8443
+
+if DEVELOPMENT:
+    WEBHOOK_URL = "https://smooth-beans-train.loca.lt/webhook"
+else:
+    WEBHOOK_URL = ""
+
 
 bot = AsyncTeleBot(API_TOKEN)
 
 # Logger setup
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO if DEVELOPMENT else logging.WARNING)
+logger.setLevel(logging.DEBUG if DEVELOPMENT else logging.WARNING)
 filehandler = logging.FileHandler("bot.log")
 consolehandler = logging.StreamHandler()
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")

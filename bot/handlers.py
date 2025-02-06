@@ -134,6 +134,7 @@ async def set_page_size(db: Database, userid, page_size):
 @bot.message_handler(commands=["start"])
 @rate_limiter
 async def send_welcome(message):
+    logger.debug(message.text)
     try:
         args = get_args(message.text)
         if args:
@@ -148,13 +149,14 @@ async def send_welcome(message):
             else:
                 logger.warning(f"Invalid command: {args[0]} - send_welcome")
             return
+
+        text = "Welcome! See /help to see all commands.\n\n"
+        await bot.send_message(message.chat.id, text)
+
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - send_welcome")
         await bot.send_message(message.chat.id, text=f"An error occurred: {str(e)}")
         return
-
-    text = "Welcome! See /help to see all commands.\n\n"
-    await bot.send_message(message.chat.id, text)
 
 
 @bot.message_handler(commands=[cmds["help"]["name"]])
