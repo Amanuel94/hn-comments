@@ -12,8 +12,8 @@ async def webhook():
     if request.method == "POST":
         update = Update.de_json(request.get_json(force=True))
         logger.debug("Procesing Updates...")
-        # logger.debug(update.message)
         await bot.process_new_updates(updates=[update])
+
         return "OK"
 
 

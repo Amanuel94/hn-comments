@@ -5,7 +5,7 @@ from telebot.async_telebot import AsyncTeleBot
 
 load_dotenv()
 
-DEVELOPMENT = False
+DEVELOPMENT = True
 
 API_TOKEN = os.getenv("API_TOKEN")
 DB_NAME = os.getenv("DB_NAME")
@@ -19,7 +19,7 @@ HOST = "0.0.0.0"
 PORT = 8443
 
 if DEVELOPMENT:
-    WEBHOOK_URL = "https://smooth-beans-train.loca.lt/webhook"
+    WEBHOOK_URL = "https://purple-zebras-dig.loca.lt/webhook"
 else:
     WEBHOOK_URL = "https://hn-comments.onrender.com/webhook"
 

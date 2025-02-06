@@ -135,6 +135,9 @@ async def set_page_size(db: Database, userid, page_size):
 @rate_limiter
 async def send_welcome(message):
     logger.debug(message.text)
+    logger.debug(message.chat.id)
+    if not isinstance(message, Message):
+        logger.warning("param is not type of telebot.types.Message")
     try:
         args = get_args(message.text)
         if args:
@@ -151,7 +154,10 @@ async def send_welcome(message):
             return
 
         text = "Welcome! See /help to see all commands.\n\n"
-        await bot.send_message(message.chat.id, text)
+        await bot.send_message(
+            chat_id=message.chat.id,
+            text=text,
+        )
 
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - send_welcome")
