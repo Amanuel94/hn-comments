@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 import logging
 import os
 from telebot.async_telebot import AsyncTeleBot
+from aiogram import Bot
 
 load_dotenv()
 
@@ -19,12 +20,13 @@ HOST = "0.0.0.0"
 PORT = 8443
 
 if DEVELOPMENT:
-    WEBHOOK_URL = "https://purple-zebras-dig.loca.lt/webhook"
+    WEBHOOK_URL = "https://eighty-spoons-draw.loca.lt/webhook"
 else:
     WEBHOOK_URL = "https://hn-comments.onrender.com/webhook"
 
 
 bot = AsyncTeleBot(API_TOKEN)
+sender = Bot(API_TOKEN)
 
 # Logger setup
 logger = logging.getLogger(__name__)

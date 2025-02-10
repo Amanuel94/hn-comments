@@ -1,7 +1,14 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+import time
+import aiohttp
 from telebot.types import Update
 from flask import Flask, request
 from bot.config import bot, logger, HOST, PORT, WEBHOOK_URL
-import threading
+from threading import Thread
+
+from bot.handlers import send_welcome
+
 
 app = Flask(__name__)
 
@@ -12,8 +19,9 @@ async def webhook():
     if request.method == "POST":
         update = Update.de_json(request.get_json(force=True))
         logger.debug("Procesing Updates...")
+        # await bot.close_session()
         await bot.process_new_updates(updates=[update])
-
+        # await bot.close_session()
         return "OK"
 
 
@@ -39,5 +47,7 @@ async def delete_webhook():
         logger.warning("Couldn't delete webhook")
 
 
-def run():
+async def run():
+    await delete_webhook()
+    await config_webhook()
     app.run(host=HOST, port=PORT)

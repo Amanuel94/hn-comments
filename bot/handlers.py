@@ -1,10 +1,15 @@
 import asyncio, json
+import time
+
+import aiohttp
+from aiogram import Bot
+from telebot.async_telebot import AsyncTeleBot
 from telebot.util import quick_markup
 from telebot.types import Message
 
 from .api import get_comment, get_info, get_user_karma
 from .commands import cmds
-from .config import DB_NAME, DEFAULT_PAGE_SIZE, bot, logger
+from .config import DB_NAME, DEFAULT_PAGE_SIZE, bot, logger, API_TOKEN
 from .middleware import rate_limiter
 from .utils import get_args, template, user_url, item_url, parse_xml
 from database import Database
@@ -154,10 +159,11 @@ async def send_welcome(message):
             return
 
         text = "Welcome! See /help to see all commands.\n\n"
-        await bot.send_message(
-            chat_id=message.chat.id,
-            text=text,
-        )
+        # aibot = Bot(API_TOKEN)
+        # result = await aibot.send_message(chat_id=message.chat.id, text=text)
+        # await bot.close_session()
+        # to = aiohttp.ClientTimeout(total=None, sock_connect=10000, sock_read=10000)
+        await bot.send_message(chat_id=message.chat.id, text=text)
 
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - send_welcome")
