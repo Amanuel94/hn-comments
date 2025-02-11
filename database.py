@@ -85,6 +85,21 @@ class Database(ContextDecorator):
             )
             return False
 
+    def delete_all_bookmarks(self, userid):
+        try:
+            self.cur.execute("DELETE FROM bookmarks WHERE userid = ? ", (userid,))
+            self.conn.commit()
+            logger.info(f"All records deleted: userid={userid}")
+            return True
+        except sqlite3.Error as e:
+            logger.error(f"Database error: {e} - delete_all_bookmarks: userid={userid}")
+            return False
+        except Exception as e:
+            logger.error(
+                f"Unexpected error: {e} - delete_all_bookmarks: userid={userid}"
+            )
+            return False
+
     def search_page(self, userid):
         try:
             self.cur.execute(

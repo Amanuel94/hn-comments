@@ -2,7 +2,6 @@ from dotenv import load_dotenv
 import logging
 import os
 from telebot.async_telebot import AsyncTeleBot
-from aiogram import Bot
 
 load_dotenv()
 
@@ -18,17 +17,19 @@ RATE_LIMIT = 30
 TIME_FRAME = 60  # seconds
 HOST = "0.0.0.0"
 PORT = 8443
-TG_BASE_URL = f"https://api.telegram.org/bot{API_TOKEN}/"
+TG_BOT_CALLBACK_LINK = "https://t.me/hn_comments_bot?start={0}"
 
 if DEVELOPMENT:
-    WEBHOOK_URL = "https://tame-bushes-relax.loca.lt/webhook"
+    WEBHOOK_URL = "https://fifty-ties-allow.loca.lt/webhook"
 else:
     WEBHOOK_URL = "https://hn-comments.onrender.com/webhook"
 
 WEBHOOK_URL_PATH = "/{}/".format(API_TOKEN)
+WEBHOOK_SSL_CERT = "./webhook_cert.pem"
+WEBHOOK_SSL_PRIV = "./webhook_pkey.pem"
+
 
 bot = AsyncTeleBot(API_TOKEN)
-sender = Bot(API_TOKEN)
 
 # Logger setup
 logger = logging.getLogger(__name__)

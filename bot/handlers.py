@@ -1,15 +1,18 @@
 import asyncio, json
-import time
-
-import aiohttp
-from aiogram import Bot
-from telebot.async_telebot import AsyncTeleBot
+import telebot
 from telebot.util import quick_markup
 from telebot.types import Message
 
 from .api import get_comment, get_info, get_user_karma
 from .commands import cmds
-from .config import DB_NAME, DEFAULT_PAGE_SIZE, bot, logger, API_TOKEN
+from .config import (
+    DB_NAME,
+    DEFAULT_PAGE_SIZE,
+    TG_BOT_CALLBACK_LINK,
+    bot,
+    logger,
+    API_TOKEN,
+)
 from .middleware import rate_limiter
 from .utils import get_args, template, user_url, item_url, parse_xml
 from database import Database
@@ -71,9 +74,15 @@ async def list_comments(iid, message: Message, page=0):
             comment["time"],
         )
 
+        kid = comment["id"]
         markup = quick_markup(
-            {"Read on site": {"url": item_url(comment["id"])}}, row_width=1
+            {
+                "Read on site": {"url": item_url(kid)},
+                "Bookmark comment": {"callback_data": f"bookmark_{kid}"},
+            },
+            row_width=2,
         )
+
         try:
             await bot.reply_to(message, msg, parse_mode="Markdown", reply_markup=markup)
         except Exception as e:
@@ -81,11 +90,16 @@ async def list_comments(iid, message: Message, page=0):
             await bot.reply_to(message, msg, reply_markup=markup)
 
     next_btn = quick_markup(
-        {"Next": {"callback_data": f"list_{iid}_{page+page_size}"}},
-        row_width=1,
+        {
+            f"Next {page_size} comments": {
+                "callback_data": f"list_{iid}_{page+page_size}"
+            },
+            "Bookmark Story": {"callback_data": f"bookmark_{iid}"},
+        },
+        row_width=2,
     )
     await bot.send_message(
-        message.chat.id, text=f"Next {page_size} messages", reply_markup=next_btn
+        message.chat.id, text=f"What do you want to do?", reply_markup=next_btn
     )
 
 
@@ -139,8 +153,7 @@ async def set_page_size(db: Database, userid, page_size):
 @bot.message_handler(commands=["start"])
 @rate_limiter
 async def send_welcome(message):
-    logger.debug(message.text)
-    logger.debug(message.chat.id)
+
     if not isinstance(message, Message):
         logger.warning("param is not type of telebot.types.Message")
     try:
@@ -154,17 +167,24 @@ async def send_welcome(message):
                 with Database(DB_NAME) as db:
                     await save_story(db, iid, message.chat.id)
                 await bot.send_message(message.chat.id, text="Story bookmarked")
+            elif args[0].startswith(cmds["delete"]["name"]):
+                iid, *_ = get_args(args[0], delimiter="_")
+                with Database(DB_NAME) as db:
+                    await delete_story(db, iid, message.chat.id)
+                await bot.send_message(
+                    message.chat.id, text=f"Deleted bookmark for {iid}"
+                )
+
             else:
                 logger.warning(f"Invalid command: {args[0]} - send_welcome")
             return
 
         text = "Welcome! See /help to see all commands.\n\n"
-        logger.debug(bot.event_handler)
         await bot.send_message(chat_id=message.chat.id, text=text)
 
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - send_welcome")
-        await bot.send_message(message.chat.id, text=f"An error occurred: {str(e)}")
+        await bot.send_message(message.chat.id, text=f"An unknown error occured")
         return
 
 
@@ -192,7 +212,7 @@ async def get_comments(message):
         await list_comments(iid, message, page=page)
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - get_comments")
-        await bot.send_message(message.chat.id, text="An error occurred")
+        await bot.send_message(message.chat.id, text="An unknown error occured")
 
 
 @bot.callback_query_handler(
@@ -205,7 +225,21 @@ async def list_callback(call):
         await list_comments(iid, call.message, page=page)
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - list_callback")
-        await bot.send_message(call.message.chat.id, text="An error occurred")
+        await bot.send_message(call.message.chat.id, text="An unknown error occured")
+
+
+@bot.callback_query_handler(
+    func=lambda call: call.data.startswith(cmds["bookmark"]["name"])
+)
+async def bookmark_callback(call):
+    try:
+        _, iid, *_ = call.data.split("_")
+        with Database(DB_NAME) as db:
+            await save_story(db, iid, call.message.chat.id)
+        await bot.send_message(call.message.chat.id, text="Item bookmarked")
+    except Exception as e:
+        logger.error(f"An error occurred: {str(e)} - bookmark_callback")
+        await bot.send_message(call.message.chat.id, text="An unknown error occured")
 
 
 @bot.message_handler(commands=[cmds["bookmark"]["name"]])
@@ -225,6 +259,16 @@ async def bookmark(message):
             )
             return
 
+        item = await get_info(iid)
+        logger.debug(item.content)
+        if item.status_code != 200 or item.content == b"null":
+            logger.warning(f"Failed to fetch story: {iid} - bookmark")
+            await bot.send_message(
+                message.chat.id,
+                text="Failed to fetch story. Please check the story id is correct",
+            )
+            return
+
         with Database(DB_NAME) as db:
             res = await save_story(db, iid, message.chat.id)
             if not res:
@@ -238,7 +282,7 @@ async def bookmark(message):
         await bot.send_message(message.chat.id, text="Story bookmarked")
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - bookmark")
-        await bot.send_message(message.chat.id, text="An error occurred")
+        await bot.send_message(message.chat.id, text="An unknown error occured")
 
 
 @bot.message_handler(commands=[cmds["bookmarks"]["name"]])
@@ -258,13 +302,27 @@ async def bookmarks(message):
                 if (story.status_code != 200) or (not story.content):
                     logger.warning(f"Failed to fetch story: {row[2]} - bookmarks")
                     continue
-                story_title = json.loads(story.content)["title"]
-                msg += f"[{story_title}]({item_url(row[2])}) | Story ID: {row[2]}\n"
 
-            await bot.send_message(message.chat.id, text=msg, parse_mode="Markdown")
+                story = json.loads(story.content)
+                if story["type"] != "comment":
+                    story_title = story["title"]
+                else:
+                    story_title = story["text"][:50] + (
+                        "..." if len(story["text"]) > 25 else ""
+                    )
+                type = story["type"]
+                delete_cb_link = TG_BOT_CALLBACK_LINK.format(f"del_{row[2]}")
+                msg += f"_{type}_ : [{story_title}]({item_url(row[2])}) | [delete]({delete_cb_link})\n\n"
+            msg = parse_xml(msg)
+            await bot.send_message(
+                message.chat.id,
+                text=msg,
+                parse_mode="Markdown",
+                disable_web_page_preview=True,
+            )
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - bookmarks")
-        await bot.send_message(message.chat.id, text="An error occurred")
+        await bot.send_message(message.chat.id, text="An unknown error occured")
 
 
 @bot.message_handler(commands=[cmds["delete"]["name"]])
@@ -292,7 +350,7 @@ async def delete(message):
 
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - delete")
-        await bot.send_message(message.chat.id, text="An error occurred")
+        await bot.send_message(message.chat.id, text="An unknown error occured")
 
 
 @bot.message_handler(commands=[cmds["setpage"]["name"]])
@@ -326,4 +384,22 @@ async def set_page(message):
         await bot.send_message(message.chat.id, text="Page size set")
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - set_page")
-        await bot.send_message(message.chat.id, text="An error occurred")
+        await bot.send_message(message.chat.id, text="An unknown error occured")
+
+
+@bot.message_handler(commands=[cmds["deleteall"]["name"]])
+@rate_limiter
+async def delete_all(message):
+    try:
+        with Database(DB_NAME) as db:
+            res = db.delete_all_bookmarks(message.chat.id)
+            if not res:
+                await bot.send_message(
+                    message.chat.id, text="Failed to delete all bookmarks"
+                )
+                return
+
+        await bot.send_message(message.chat.id, text="All bookmarks deleted")
+    except Exception as e:
+        logger.error(f"An error occurred: {str(e)} - delete_all")
+        await bot.send_message(message.chat.id, text="An unknown error occured")

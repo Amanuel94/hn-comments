@@ -1,38 +1,34 @@
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
-import time
-import aiohttp
-from telebot.types import Update
+import atexit
 from flask import Flask, request
-from bot.config import bot, logger, HOST, PORT, WEBHOOK_URL, WEBHOOK_URL_PATH
-from threading import Thread
+from telebot.types import Update
 
-from bot.handlers import send_welcome
-
+from bot.config import bot, logger, HOST, PORT, WEBHOOK_URL
+from bot.middleware import resetter
 
 app = Flask(__name__)
 
 
 @app.route("/webhook", methods=["POST"])
+@resetter
 async def webhook():
     logger.debug("Getting request...")
+
     if request.method == "POST":
         update = Update.de_json(request.get_json(force=True))
         logger.debug("Procesing Updates...")
-        # await bot.close_session()
         await bot.process_new_updates(updates=[update])
-        # await bot.close_session()
         return "OK"
 
 
 @app.route("/test", methods=["GET"])
 def test():
-    logger.debug("Getting request...")
-    return "Helllo"
+    logger.debug("Getting test request...")
+    return "Test"
 
 
 async def config_webhook():
-    logger.debug("In config_webhook")
+
     res = await bot.set_webhook(WEBHOOK_URL)
     if not res:
         raise Exception("Couldn't set webhook")
@@ -41,13 +37,17 @@ async def config_webhook():
 
 
 async def delete_webhook():
-    logger.debug("In delete_webhook")
     res = await bot.delete_webhook(drop_pending_updates=True)
     if not res:
         logger.warning("Couldn't delete webhook")
 
 
 async def run():
-    await delete_webhook()
     await config_webhook()
     app.run(host=HOST, port=PORT)
+
+
+@atexit.register
+def teardown():
+    logger.debug("Closing client connection")
+    logger.debug(asyncio.run(bot.close_session()))

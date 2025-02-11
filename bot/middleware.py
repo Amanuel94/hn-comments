@@ -21,3 +21,20 @@ def rate_limiter(func):
         return await func(message, *args, **kwargs)
 
     return wrapper
+
+
+def resetter(func):
+    reset_session = True
+
+    async def wrapper(*args, **kwargs):
+        nonlocal reset_session
+
+        logger.debug(reset_session)
+        if reset_session:
+            await bot.close_session()
+            logger.debug("Resetting Connection")
+            reset_session = False
+
+        return await func(*args, **kwargs)
+
+    return wrapper

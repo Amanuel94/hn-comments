@@ -29,6 +29,11 @@ cmds = {
         "description": "deletes a bookmark",
         "usage": "/del <story id>",
     },
+    "deleteall": {
+        "name": "deleteall",
+        "description": "deletes all bookmarks",
+        "usage": "/deleteall",
+    },
     "setpage": {
         "name": "setpage",
         "description": "set the page size",
