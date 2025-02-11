@@ -159,10 +159,7 @@ async def send_welcome(message):
             return
 
         text = "Welcome! See /help to see all commands.\n\n"
-        # aibot = Bot(API_TOKEN)
-        # result = await aibot.send_message(chat_id=message.chat.id, text=text)
-        # await bot.close_session()
-        # to = aiohttp.ClientTimeout(total=None, sock_connect=10000, sock_read=10000)
+        logger.debug(bot.event_handler)
         await bot.send_message(chat_id=message.chat.id, text=text)
 
     except Exception as e:

@@ -18,12 +18,14 @@ RATE_LIMIT = 30
 TIME_FRAME = 60  # seconds
 HOST = "0.0.0.0"
 PORT = 8443
+TG_BASE_URL = f"https://api.telegram.org/bot{API_TOKEN}/"
 
 if DEVELOPMENT:
-    WEBHOOK_URL = "https://eighty-spoons-draw.loca.lt/webhook"
+    WEBHOOK_URL = "https://tame-bushes-relax.loca.lt/webhook"
 else:
     WEBHOOK_URL = "https://hn-comments.onrender.com/webhook"
 
+WEBHOOK_URL_PATH = "/{}/".format(API_TOKEN)
 
 bot = AsyncTeleBot(API_TOKEN)
 sender = Bot(API_TOKEN)

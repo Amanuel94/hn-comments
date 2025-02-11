@@ -4,7 +4,7 @@ import time
 import aiohttp
 from telebot.types import Update
 from flask import Flask, request
-from bot.config import bot, logger, HOST, PORT, WEBHOOK_URL
+from bot.config import bot, logger, HOST, PORT, WEBHOOK_URL, WEBHOOK_URL_PATH
 from threading import Thread
 
 from bot.handlers import send_welcome
