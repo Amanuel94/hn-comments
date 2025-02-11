@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 import logging
 import os
 from telebot.async_telebot import AsyncTeleBot
-from aiogram import Bot
+from telebot import TeleBot
 
 load_dotenv()
 
@@ -27,8 +27,8 @@ else:
 
 WEBHOOK_URL_PATH = "/{}/".format(API_TOKEN)
 
-bot = AsyncTeleBot(API_TOKEN)
-sender = Bot(API_TOKEN)
+# bot = AsyncTeleBot(API_TOKEN)
+bot = TeleBot(API_TOKEN)
 
 # Logger setup
 logger = logging.getLogger(__name__)

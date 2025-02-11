@@ -16,4 +16,3 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         print("here")
-        asyncio.run(bot.close_session)
