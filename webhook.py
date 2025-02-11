@@ -50,4 +50,5 @@ async def run():
 @atexit.register
 def teardown():
     logger.debug("Closing client connection")
+    logger.debug(asyncio.run(delete_webhook()))
     logger.debug(asyncio.run(bot.close_session()))
