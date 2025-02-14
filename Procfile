@@ -1,1 +1,1 @@
-worker: python main.py
+gunicorn = gunicorn -b localhost:8443 --workers=1 'main:app()'
