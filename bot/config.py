@@ -9,6 +9,8 @@ DEVELOPMENT = os.getenv("DEVELOPMENT")
 API_TOKEN = os.getenv("API_TOKEN")
 DB_NAME = os.getenv("DB_NAME")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+MONGO_URL = os.getenv("MONGO_URL")
+MONGO_DB_NAME = "mongo_hn_comments"
 
 DEFAULT_PAGE_SIZE = 10
 API_VERSION = "v0"
@@ -21,7 +23,7 @@ PORT = 8443
 TG_BOT_CALLBACK_LINK = "https://t.me/hn_comments_bot?start={0}"
 
 if DEVELOPMENT == "True":
-    WEBHOOK_URL = "https://fifty-ties-allow.loca.lt/webhook"
+    WEBHOOK_URL = "https://moody-wombats-sin.loca.lt/webhook"
 
 
 bot = AsyncTeleBot(API_TOKEN)

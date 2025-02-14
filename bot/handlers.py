@@ -11,11 +11,11 @@ from .config import (
     TG_BOT_CALLBACK_LINK,
     bot,
     logger,
-    API_TOKEN,
+    MONGO_DB_NAME,
 )
 from .middleware import rate_limiter
 from .utils import get_args, template, user_url, item_url, parse_xml
-from database import Database
+from database import Database, MongoDatabase
 
 
 async def list_comments(iid, message: Message, page=0):
@@ -33,7 +33,7 @@ async def list_comments(iid, message: Message, page=0):
         return
 
     item = json.loads(res.content)
-    with Database(DB_NAME) as db:
+    with MongoDatabase(MONGO_DB_NAME) as db:
         page_size = await get_page_size(db, message.chat.id) or DEFAULT_PAGE_SIZE
     kids, title = item["kids"][page : page + page_size], item["title"]
 
@@ -134,7 +134,7 @@ async def list_bookmarks(db: Database, userid):
 async def get_page_size(db: Database, userid):
     res = db.search_page(userid)
     if res:
-        return res[0][2]
+        return res["page"]
     return None
 
 
@@ -164,16 +164,14 @@ async def send_welcome(message):
                 await list_comments(iid, message)
             elif args[0].startswith(cmds["bookmark"]["name"]):
                 iid, *_ = get_args(args[0], delimiter="_")
-                with Database(DB_NAME) as db:
+                with MongoDatabase(MONGO_DB_NAME) as db:
                     await save_story(db, iid, message.chat.id)
                 await bot.send_message(message.chat.id, text="Story bookmarked")
             elif args[0].startswith(cmds["delete"]["name"]):
                 iid, *_ = get_args(args[0], delimiter="_")
-                with Database(DB_NAME) as db:
+                with MongoDatabase(MONGO_DB_NAME) as db:
                     await delete_story(db, iid, message.chat.id)
-                await bot.send_message(
-                    message.chat.id, text=f"Deleted bookmark for {iid}"
-                )
+                await bot.send_message(message.chat.id, text=f"Bookmark removed.")
 
             else:
                 logger.warning(f"Invalid command: {args[0]} - send_welcome")
@@ -234,7 +232,7 @@ async def list_callback(call):
 async def bookmark_callback(call):
     try:
         _, iid, *_ = call.data.split("_")
-        with Database(DB_NAME) as db:
+        with MongoDatabase(MONGO_DB_NAME) as db:
             await save_story(db, iid, call.message.chat.id)
         await bot.send_message(call.message.chat.id, text="Item bookmarked")
     except Exception as e:
@@ -269,7 +267,7 @@ async def bookmark(message):
             )
             return
 
-        with Database(DB_NAME) as db:
+        with MongoDatabase(MONGO_DB_NAME) as db:
             res = await save_story(db, iid, message.chat.id)
             if not res:
                 logger.warning("Failed to create bookmark - bookmark")
@@ -289,18 +287,20 @@ async def bookmark(message):
 @rate_limiter
 async def bookmarks(message):
     try:
-        with Database(DB_NAME) as db:
+        with MongoDatabase(MONGO_DB_NAME) as db:
             res = await list_bookmarks(db, message.chat.id)
             if not res:
                 await bot.send_message(message.chat.id, text="No bookmarks found")
                 return
 
             msg = "Bookmarks:\n\n"
-            tasks = [asyncio.create_task(get_info(row[2])) for row in res]
+            tasks = [asyncio.create_task(get_info(row["iid"])) for row in res]
             for i, row in enumerate(res):
+                iid = row["iid"]
+
                 story = await tasks[i]
                 if (story.status_code != 200) or (not story.content):
-                    logger.warning(f"Failed to fetch story: {row[2]} - bookmarks")
+                    logger.warning(f"Failed to fetch story: {iid} - bookmarks")
                     continue
 
                 story = json.loads(story.content)
@@ -311,8 +311,9 @@ async def bookmarks(message):
                         "..." if len(story["text"]) > 25 else ""
                     )
                 type = story["type"]
-                delete_cb_link = TG_BOT_CALLBACK_LINK.format(f"del_{row[2]}")
-                msg += f"_{type}_ : [{story_title}]({item_url(row[2])}) | [delete]({delete_cb_link})\n\n"
+                delete_cb_link = TG_BOT_CALLBACK_LINK.format(f"del_{iid}")
+                visite_site_link = item_url(iid)
+                msg += f"_{type[0]}_: [{story_title}]({item_url(iid)})\n [visit]({visite_site_link}) | [remove]({delete_cb_link})\n\n"
             msg = parse_xml(msg)
             await bot.send_message(
                 message.chat.id,
@@ -334,7 +335,7 @@ async def delete(message):
             await bot.send_message(message.chat.id, text="Please provide a bookmark id")
             return
 
-        with Database(DB_NAME) as db:
+        with MongoDatabase(MONGO_DB_NAME) as db:
             res = await delete_story(db, args[0], message.chat.id)
             if not res:
                 logger.warning(
@@ -364,7 +365,7 @@ async def set_page(message):
 
         try:
             x = int(args[0])
-            with Database(DB_NAME) as db:
+            with MongoDatabase(MONGO_DB_NAME) as db:
                 res = await set_page_size(db, message.chat.id, x)
                 if not res:
                     await bot.send_message(
@@ -391,7 +392,7 @@ async def set_page(message):
 @rate_limiter
 async def delete_all(message):
     try:
-        with Database(DB_NAME) as db:
+        with MongoDatabase(MONGO_DB_NAME) as db:
             res = db.delete_all_bookmarks(message.chat.id)
             if not res:
                 await bot.send_message(

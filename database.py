@@ -1,7 +1,9 @@
 import sqlite3
 from contextlib import ContextDecorator
 
-from bot.config import logger
+from pymongo import MongoClient
+
+from bot.config import MONGO_URL, logger
 
 
 class Database(ContextDecorator):
@@ -158,3 +160,87 @@ class Database(ContextDecorator):
     def __exit__(self, *exc):
         self.conn.close()
         return False
+
+
+class MongoDatabase(ContextDecorator):
+
+    def __init__(self, db):
+        self.client = MongoClient(MONGO_URL)
+        self.bookmarks = self.client[db]["bookmarks"]
+        self.pages = self.client[db]["pages"]
+        return
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.client.close()
+        return False
+
+    def __del__(self):
+        self.client.close()
+        return False
+
+    def insert_bookmark(self, userid, iid):
+        try:
+            self.bookmarks.insert_one({"userid": userid, "iid": iid})
+            logger.info("Record inserted: userid=%s, iid=%s", userid, iid)
+            return True
+        except Exception as e:
+            logger.error(
+                f"Unexpected error: {e} - insert_bookmark: userid={userid}, iid={iid}"
+            )
+            return False
+
+    def search_bookmark(self, userid=""):
+        try:
+            rows = self.bookmarks.find({"userid": userid})
+            logger.info(f"Record found: userid={userid}, rows={rows}")
+            return list(rows)
+        except Exception as e:
+            logger.error(f"Unexpected error: {e} - search_bookmark: userid={userid}")
+            return []
+
+    def delete_bookmark(self, iid, userid):
+        try:
+            self.bookmarks.delete_one({"iid": iid, "userid": userid})
+            logger.info(f"Record deleted: userid={userid}, iid={iid}")
+            return True
+        except Exception as e:
+            logger.error(
+                f"Unexpected error: {e} - delete_bookmark: userid={userid}, iid={iid}"
+            )
+            return False
+
+    def delete_all_bookmarks(self, userid):
+        try:
+            self.bookmarks.delete_many({"userid": userid})
+            logger.info(f"All records deleted: userid={userid}")
+            return True
+        except Exception as e:
+            logger.error(
+                f"Unexpected error: {e} - delete_all_bookmarks: userid={userid}"
+            )
+            return False
+
+    def search_page(self, userid):
+        try:
+            rows = list(self.pages.find({"userid": userid}))
+
+            return rows[0]
+        except Exception as e:
+            logger.error(f"Unexpected error: {e} - search_page: userid={userid}")
+            return []
+
+    def upsert_page(self, userid, page):
+        try:
+            self.pages.update_one(
+                {"userid": userid}, {"$set": {"page": page}}, upsert=True
+            )
+            logger.info(f"Record updated: userid={userid}, page={page}")
+            return True
+        except Exception as e:
+            logger.error(
+                f"Unexpected error: {e} - upsert_page: userid={userid}, page={page}"
+            )
+            return False
