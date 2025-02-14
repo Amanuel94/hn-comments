@@ -42,9 +42,14 @@ async def delete_webhook():
         logger.warning("Couldn't delete webhook")
 
 
-async def run():
-    await config_webhook()
-    app.run(host=HOST, port=PORT)
+def create_app():
+    setup()
+    return app
+
+
+def setup():
+    logger.debug("Setting up webhook...")
+    asyncio.run(config_webhook())
 
 
 @atexit.register

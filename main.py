@@ -1,13 +1,10 @@
 import asyncio
 
-from bot.config import logger
-from webhook import run
+from bot.config import PORT, logger
+from webhook import create_app
 
 
-async def main():
-    logger.info("Running app...")
-    await run()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+def app():
+    logger.info("Starting app...")
+    app_ = create_app()
+    return app_

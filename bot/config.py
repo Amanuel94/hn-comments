@@ -23,7 +23,7 @@ PORT = 8443
 TG_BOT_CALLBACK_LINK = "https://t.me/hn_comments_bot?start={0}"
 
 if DEVELOPMENT == "True":
-    WEBHOOK_URL = "https://moody-wombats-sin.loca.lt/webhook"
+    WEBHOOK_URL = "https://six-mirrors-marry.loca.lt/webhook"
 
 
 bot = AsyncTeleBot(API_TOKEN)
