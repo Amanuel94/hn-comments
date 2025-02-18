@@ -37,7 +37,7 @@ async def webhook():
         return "OK"
 
 
-@app.route("/test", methods=["GET", "HEAD"])
+@app.route("/test", methods=["GET"])
 def test():
     logger.debug("Getting test request...")
     return "Test"
