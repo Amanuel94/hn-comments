@@ -6,7 +6,23 @@ from telebot.types import Update
 from bot.config import bot, logger, HOST, PORT, WEBHOOK_URL
 from bot.middleware import resetter
 
+
+async def config_webhook():
+
+    res = await bot.set_webhook(WEBHOOK_URL)
+    if not res:
+        raise Exception("Couldn't set webhook")
+    info = await bot.get_webhook_info()
+    logger.debug(info)
+
+
+def setup():
+    logger.debug("Setting up webhook...")
+    asyncio.run(config_webhook())
+
+
 app = Flask(__name__)
+setup()
 
 
 @app.route("/webhook", methods=["POST"])
@@ -27,15 +43,6 @@ def test():
     return "Test"
 
 
-async def config_webhook():
-
-    res = await bot.set_webhook(WEBHOOK_URL)
-    if not res:
-        raise Exception("Couldn't set webhook")
-    info = await bot.get_webhook_info()
-    logger.debug(info)
-
-
 async def delete_webhook():
     res = await bot.delete_webhook(drop_pending_updates=True)
     if not res:
@@ -47,13 +54,8 @@ def create_app():
     return app
 
 
-def setup():
-    logger.debug("Setting up webhook...")
-    asyncio.run(config_webhook())
-
-
 @atexit.register
 def teardown():
     logger.debug("Closing client connection")
-    logger.debug(asyncio.run(delete_webhook()))
+    # logger.debug(asyncio.run(delete_webhook()))
     logger.debug(asyncio.run(bot.close_session()))
