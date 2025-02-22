@@ -31,8 +31,8 @@ CACHE_PORT = 11211
 
 TG_BOT_CALLBACK_LINK = "https://t.me/hn_comments_bot?start={0}"
 
-if DEVELOPMENT == "True":
-    WEBHOOK_URL = "https://six-mirrors-marry.loca.lt/webhook"
+# if DEVELOPMENT == "True":
+#     WEBHOOK_URL = "https://spotty-ghosts-ask.loca.lt/webhook"
 
 
 bot = AsyncTeleBot(API_TOKEN)

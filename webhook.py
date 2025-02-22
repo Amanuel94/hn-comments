@@ -1,9 +1,13 @@
 import asyncio
 import atexit
+import datetime
 import aiohttp
 from flask import Flask, request
 import requests
 from telebot.types import Update
+from telebot.util import quick_markup
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from bot.commands import cmds
 
 from bot.api import get_info
 from bot.config import (
@@ -11,6 +15,7 @@ from bot.config import (
     CHANNEL_ID,
     DEVELOPMENT,
     MONGO_DB_NAME,
+    TG_BOT_CALLBACK_LINK,
     TOP_STORY_SCORE,
     bot,
     logger,
@@ -72,7 +77,7 @@ async def make_req(url):
 def filter_posted(all_top_stories):
     all_top_stories = list(map(str, all_top_stories))
     with MongoDatabase(MONGO_DB_NAME) as db:
-        return set(all_top_stories) - db.search_stories(all_top_stories)
+        return set(all_top_stories) - set(db.search_stories(all_top_stories))
 
 
 @app.route("/cron", methods=["GET", "HEAD"])
@@ -81,26 +86,86 @@ async def cron():
     url = BASE_API_URL + "topstories.json"
     all_top_stories = set(await make_req(url))
     top_stories = filter_posted(all_top_stories)
-    if DEVELOPMENT == "True":
-        top_stories = list(top_stories)[:5]
+    # if DEVELOPMENT == "True":
+    #     top_stories = list(top_stories)[:5]
 
-    for story_id in top_stories:
-        url = BASE_API_URL + slug("item", story_id)
-        story = await make_req(url)
+    urls = list(map(lambda x: BASE_API_URL + slug("item", x), top_stories))
+    tasks = [make_req(url) for url in urls]
+
+    for task in tasks:
+
+        story = await task
         if not story:
             continue
 
-        logger.debug("Story: %s", story)
         if story.get("score", None) is None or story["score"] < TOP_STORY_SCORE:
             logger.info("Story score is too low or undefined")
             continue
 
+        logger.debug("Story: %s", story)
+        if story.get("deleted", False):
+            logger.info("Story is deleted")
+            continue
+
+        now = datetime.datetime.now()
+        published = datetime.datetime.fromtimestamp(story["time"])
+        time_diff = now - published
+        hrs = time_diff.total_seconds() // 3600
+        display_time = (
+            str(hrs) + " hours"
+            if time_diff.days == 0
+            else str(time_diff.days) + " days"
+        )
+
+        activity = ""
+        if hrs <= 3:
+            activity = "🔥"
+        if hrs <= 2:
+            activity = "🔥🔥"
+        if hrs <= 1:
+            activity = "🔥🔥🔥"
+            if story["score"] >= 200:
+                activity = "🔥🔥🔥🔥"
+
+        if time_diff.days >= 7:
+            activity = "❄️"
+
+        msg = f"**{story['title']}**\n"
+        msg += f"Posted {display_time} ago \n"
+        msg += f"Scored {story['score']} upvotes {activity}\n"
+        if story.get("url", None):
+            msg += f"[Link]({story['url']})"
+
+        markup = InlineKeyboardMarkup()
+        markup.row_width = 1
+        # logger.debug(
+        #     TG_BOT_CALLBACK_LINK.format(f"{cmds['bookmark']["name"]}_" + str(story["id"]))
+        # )
+        markup.add(
+            InlineKeyboardButton(
+                text="Read Later",
+                url=TG_BOT_CALLBACK_LINK.format(
+                    f"{cmds['bookmark']['name']}_" + str(story["id"])
+                ),
+            ),
+            InlineKeyboardButton(
+                text="Browse Comments",
+                url=TG_BOT_CALLBACK_LINK.format(
+                    f"{cmds['list']['name']}_" + str(story["id"])
+                ),
+            ),
+            InlineKeyboardButton(
+                text="Read on site",
+                url=f"https://news.ycombinator.com/item?id={story['id']}",
+            ),
+            row_width=2,
+        )
+
+        await bot.send_message(
+            chat_id=CHANNEL_ID, text=msg, parse_mode="Markdown", reply_markup=markup
+        )
         with MongoDatabase(MONGO_DB_NAME) as db:
             db.post_story(str(story["id"]))
-            await bot.send_message(
-                chat_id=CHANNEL_ID,
-                text=f"Story: *{story['title']}* has reached {story['score']} upvotes!",
-            )
 
     return "OK"
 
