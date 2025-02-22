@@ -3,7 +3,7 @@ from contextlib import ContextDecorator
 
 from pymongo import MongoClient
 
-from bot.config import MONGO_URL, logger
+from bot.config import MONGO_URL, logger, cache
 
 
 class Database(ContextDecorator):
@@ -168,6 +168,7 @@ class MongoDatabase(ContextDecorator):
         self.client = MongoClient(MONGO_URL)
         self.bookmarks = self.client[db]["bookmarks"]
         self.pages = self.client[db]["pages"]
+        self.stories = self.client[db]["stories"]
         return
 
     def __enter__(self):
@@ -226,7 +227,9 @@ class MongoDatabase(ContextDecorator):
     def search_page(self, userid):
         try:
             rows = list(self.pages.find({"userid": userid}))
-
+            if not rows:
+                return []
+            logger.info(f"Record found: userid={userid}, rows={rows}")
             return rows[0]
         except Exception as e:
             logger.error(f"Unexpected error: {e} - search_page: userid={userid}")
@@ -244,3 +247,37 @@ class MongoDatabase(ContextDecorator):
                 f"Unexpected error: {e} - upsert_page: userid={userid}, page={page}"
             )
             return False
+
+    def post_story(self, story):
+        try:
+            self.stories.insert_one({"id": str(story)})
+            # cache.set(story, True)
+            logger.info(f"Record inserted: story={story}")
+            return True
+        except Exception as e:
+            logger.error(f"Unexpected error: {e} - post_story: story={story}")
+            return False
+
+    def search_story(self, story_id):
+        try:
+            rows = list(self.stories.find({"id": str(story_id)}))
+            if not rows:
+                return []
+            logger.info(f"Record found: story_id={story_id}, rows={rows}")
+            return rows[0]
+        except Exception as e:
+            logger.error(f"Unexpected error: {e} - search_story: story_id={story_id}")
+            return []
+
+    def search_stories(self, story_ids):
+        try:
+            rows = list(self.stories.find({"id": {"$in": story_ids}}))
+            if not rows:
+                return set([])
+            logger.info(f"Record found: story_ids={story_ids}, rows={rows}")
+            return set(rows)
+        except Exception as e:
+            logger.error(
+                f"Unexpected error: {e} - search_many_stories: story_ids={story_ids}"
+            )
+            return []

@@ -3,10 +3,6 @@ import asyncio, json, requests
 from .config import BASE_API_URL
 from .utils import slug
 
-# async def fetch(session, url):
-#     async with session.get(url) as response:
-#         return await response.content
-
 
 async def get_comment(id):
     req = BASE_API_URL + slug("item", id)
