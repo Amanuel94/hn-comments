@@ -169,6 +169,10 @@ class MongoDatabase(ContextDecorator):
         self.bookmarks = self.client[db]["bookmarks"]
         self.pages = self.client[db]["pages"]
         self.stories = self.client[db]["stories"]
+
+        self.bookmarks.create_index([("userid", 1), ("iid", 1)], unique=True)
+        self.stories.create_index("id", unique=True)
+
         return
 
     def __enter__(self):
@@ -251,7 +255,6 @@ class MongoDatabase(ContextDecorator):
     def post_story(self, story):
         try:
             self.stories.insert_one({"id": str(story)})
-            # cache.set(story, True)
             logger.info(f"Record inserted: story={story}")
             return True
         except Exception as e:
@@ -271,11 +274,13 @@ class MongoDatabase(ContextDecorator):
 
     def search_stories(self, story_ids):
         try:
-            rows = list(self.stories.find({"id": {"$in": story_ids}}))
+            rows = list(
+                self.stories.find({"id": {"$in": story_ids}}, projection={"_id": False})
+            )
             if not rows:
                 return set([])
-            logger.info(f"Record found: story_ids={story_ids}, rows={rows}")
-            return set(rows)
+            logger.info(f"Returning {len(rows)} records")
+            return set([item["id"] for item in rows])
         except Exception as e:
             logger.error(
                 f"Unexpected error: {e} - search_many_stories: story_ids={story_ids}"

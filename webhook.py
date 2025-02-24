@@ -3,7 +3,8 @@ import atexit
 import datetime
 import aiohttp
 from flask import Flask, request
-import requests
+import threading
+
 from telebot.types import Update
 from telebot.util import quick_markup
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -43,7 +44,8 @@ def setup():
     asyncio.run(config_webhook())
 
 
-app = Flask(__name__)
+app = Flask("webhook")
+cron_app = Flask("cron")
 setup()
 
 
@@ -65,13 +67,12 @@ def test():
     return "Test"
 
 
-async def make_req(url):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            if response.status != 200:
-                logger.error("Error: %s, make_req", response.status)
-                return []
-            return await response.json()
+async def make_req(url, session):
+    async with session.get(url) as response:
+        if response.status != 200:
+            logger.error("Error: %s, make_req", response.status)
+            return []
+        return await response.json()
 
 
 def filter_posted(all_top_stories):
@@ -80,93 +81,119 @@ def filter_posted(all_top_stories):
         return set(all_top_stories) - set(db.search_stories(all_top_stories))
 
 
-@app.route("/cron", methods=["GET", "HEAD"])
-async def cron():
+async def execute_job():
+
     logger.debug("Getting cron request...")
     url = BASE_API_URL + "topstories.json"
-    all_top_stories = set(await make_req(url))
-    top_stories = filter_posted(all_top_stories)
-    # if DEVELOPMENT == "True":
-    #     top_stories = list(top_stories)[:5]
 
-    urls = list(map(lambda x: BASE_API_URL + slug("item", x), top_stories))
-    tasks = [make_req(url) for url in urls]
+    async with aiohttp.ClientSession() as hn_session:
+        all_top_stories = await make_req(url, hn_session)
+        top_stories = filter_posted(all_top_stories)
 
-    for task in tasks:
+        urls = list(map(lambda x: BASE_API_URL + slug("item", x), top_stories))
+        tasks = [asyncio.create_task(make_req(url, hn_session)) for url in urls]
 
-        story = await task
-        if not story:
-            continue
+        # a different session has to be used for telegram otherwise telebot destroys session for message handlers
+        async with aiohttp.ClientSession() as tg_session:
+            while tasks:
 
-        if story.get("score", None) is None or story["score"] < TOP_STORY_SCORE:
-            logger.info("Story score is too low or undefined")
-            continue
+                done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+                logger.debug("Remaining: %d/%d", len(tasks), len(top_stories))
+                for task in done:
+                    story = await task
+                    tasks.remove(task)
+                    if not story:
+                        continue
 
-        logger.debug("Story: %s", story)
-        if story.get("deleted", False):
-            logger.info("Story is deleted")
-            continue
+                    if (
+                        story.get("score", None) is None
+                        or story["score"] < TOP_STORY_SCORE
+                    ):
+                        logger.debug("Story score is too low or undefined")
+                        continue
 
-        now = datetime.datetime.now()
-        published = datetime.datetime.fromtimestamp(story["time"])
-        time_diff = now - published
-        hrs = time_diff.total_seconds() // 3600
-        display_time = (
-            str(hrs) + " hours"
-            if time_diff.days == 0
-            else str(time_diff.days) + " days"
-        )
+                    if story.get("deleted", False):
+                        logger.info("Story is deleted")
+                        continue
 
-        activity = ""
-        if hrs <= 3:
-            activity = "🔥"
-        if hrs <= 2:
-            activity = "🔥🔥"
-        if hrs <= 1:
-            activity = "🔥🔥🔥"
-            if story["score"] >= 200:
-                activity = "🔥🔥🔥🔥"
+                    now = datetime.datetime.now()
+                    published = datetime.datetime.fromtimestamp(story["time"])
+                    time_diff = now - published
+                    hrs = time_diff.total_seconds() // 3600
+                    display_time = (
+                        str(hrs) + " hours"
+                        if time_diff.days == 0
+                        else str(time_diff.days) + " days"
+                    )
 
-        if time_diff.days >= 7:
-            activity = "❄️"
+                    activity = ""
+                    if hrs <= 3:
+                        activity = "🔥"
+                    if hrs <= 2:
+                        activity = "🔥🔥"
+                    if hrs <= 1:
+                        activity = "🔥🔥🔥"
+                        if story["score"] >= 200:
+                            activity = "🔥🔥🔥🔥"
 
-        msg = f"**{story['title']}**\n"
-        msg += f"Posted {display_time} ago \n"
-        msg += f"Scored {story['score']} upvotes {activity}\n"
-        if story.get("url", None):
-            msg += f"[Link]({story['url']})"
+                    if time_diff.days >= 7:
+                        activity = "❄️"
 
-        markup = InlineKeyboardMarkup()
-        markup.row_width = 1
-        # logger.debug(
-        #     TG_BOT_CALLBACK_LINK.format(f"{cmds['bookmark']["name"]}_" + str(story["id"]))
-        # )
-        markup.add(
-            InlineKeyboardButton(
-                text="Read Later",
-                url=TG_BOT_CALLBACK_LINK.format(
-                    f"{cmds['bookmark']['name']}_" + str(story["id"])
-                ),
-            ),
-            InlineKeyboardButton(
-                text="Browse Comments",
-                url=TG_BOT_CALLBACK_LINK.format(
-                    f"{cmds['list']['name']}_" + str(story["id"])
-                ),
-            ),
-            InlineKeyboardButton(
-                text="Read on site",
-                url=f"https://news.ycombinator.com/item?id={story['id']}",
-            ),
-            row_width=2,
-        )
+                    msg = f"**{story['title']}**\n"
+                    msg += f"Posted {display_time} ago \n"
+                    msg += f"Scored {story['score']} upvotes {activity}\n"
+                    if story.get("url", None):
+                        msg += f"[Link]({story['url']})"
 
-        await bot.send_message(
-            chat_id=CHANNEL_ID, text=msg, parse_mode="Markdown", reply_markup=markup
-        )
-        with MongoDatabase(MONGO_DB_NAME) as db:
-            db.post_story(str(story["id"]))
+                    markup = InlineKeyboardMarkup()
+                    markup.row_width = 1
 
+                    markup.add(
+                        InlineKeyboardButton(
+                            text="Read Later",
+                            url=TG_BOT_CALLBACK_LINK.format(
+                                f"{cmds['bookmark']['name']}_" + str(story["id"])
+                            ),
+                        ),
+                        InlineKeyboardButton(
+                            text="Browse Comments",
+                            url=TG_BOT_CALLBACK_LINK.format(
+                                f"{cmds['list']['name']}_" + str(story["id"])
+                            ),
+                        ),
+                        InlineKeyboardButton(
+                            text="Read on site",
+                            url=f"https://news.ycombinator.com/item?id={story['id']}",
+                        ),
+                        row_width=2,
+                    )
+
+                    payload = {
+                        "chat_id": CHANNEL_ID,
+                        "text": msg,
+                        "parse_mode": "Markdown",
+                        "reply_markup": markup.to_dict(),
+                    }
+
+                    async with tg_session.post(
+                        f"https://api.telegram.org/bot{bot.token}/sendMessage",
+                        json=payload,
+                    ) as response:
+                        if response.status != 200:
+                            logger.error(
+                                "Failed to send message: %s", await response.text()
+                            )
+
+                    with MongoDatabase(MONGO_DB_NAME) as db:
+                        db.post_story(str(story["id"]))
+
+
+@app.route("/cron", methods=["GET", "HEAD"])
+async def cron():
+
+    thread = threading.Thread(target=lambda: asyncio.run(execute_job()))
+    thread.daemon = True
+    thread.start()
     return "OK"
 
 
