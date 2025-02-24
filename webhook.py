@@ -92,6 +92,7 @@ async def execute_job():
 
         urls = list(map(lambda x: BASE_API_URL + slug("item", x), top_stories))
         tasks = [asyncio.create_task(make_req(url, hn_session)) for url in urls]
+        posted = []
 
         # a different session has to be used for telegram otherwise telebot destroys session for message handlers
         async with aiohttp.ClientSession() as tg_session:
@@ -101,7 +102,7 @@ async def execute_job():
                 logger.debug("Remaining: %d/%d", len(tasks), len(top_stories))
                 for task in done:
                     story = await task
-                    tasks.remove(task)
+
                     if not story:
                         continue
 
@@ -139,11 +140,13 @@ async def execute_job():
                     if time_diff.days >= 7:
                         activity = "❄️"
 
-                    msg = f"**{story['title']}**\n"
-                    msg += f"Posted {display_time} ago \n"
-                    msg += f"Scored {story['score']} upvotes {activity}\n"
+                    msg = (
+                        f"*{story['title']}*\n"
+                        f"`- score: {story['score']} {activity}`\n"
+                        f"`- posted: {display_time} ago`\n\n"
+                    )
                     if story.get("url", None):
-                        msg += f"[Link]({story['url']})"
+                        msg += "[" + f"[Read]({story['url']})" + "]"
 
                     markup = InlineKeyboardMarkup()
                     markup.row_width = 1
@@ -184,8 +187,25 @@ async def execute_job():
                                 "Failed to send message: %s", await response.text()
                             )
 
-                    with MongoDatabase(MONGO_DB_NAME) as db:
-                        db.post_story(str(story["id"]))
+                            response_data = await response.json(
+                                encoding=response.get_encoding()
+                            )
+                            if response_data.get("error_code", None) == 429:
+                                logger.error("Rate limit exceeded")
+                                await asyncio.sleep(
+                                    response_data["parameters"]["retry_after"] + 1
+                                )
+                                return
+
+                        else:
+                            posted.append(str(story["id"]))
+                            tasks.remove(task)
+
+            try:
+                with MongoDatabase(MONGO_DB_NAME) as db:
+                    db.post_stories(posted)
+            except Exception as e:
+                logger.error("Failed to post story: %s", e)
 
 
 @app.route("/cron", methods=["GET", "HEAD"])

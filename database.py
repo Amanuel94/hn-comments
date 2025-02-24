@@ -261,6 +261,14 @@ class MongoDatabase(ContextDecorator):
             logger.error(f"Unexpected error: {e} - post_story: story={story}")
             return False
 
+    def post_stories(self, stories):
+        try:
+            self.stories.insert_many([{"id": str(story)} for story in stories])
+            logger.info(f"Record inserted: stories={stories}")
+            return True
+        except Exception as e:
+            logger.error(f"Unexpected error: {e} - post_stories: stories={stories}")
+
     def search_story(self, story_id):
         try:
             rows = list(self.stories.find({"id": str(story_id)}))
