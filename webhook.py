@@ -28,6 +28,7 @@ from bot.config import (
 from bot.middleware import resetter
 from bot.utils import slug
 from database import Database, MongoDatabase
+import tldextract
 
 
 async def config_webhook():
@@ -104,6 +105,8 @@ async def execute_job():
                     story = await task
 
                     if not story:
+                        logger.error("Failed to get story")
+                        tasks.remove(task)
                         continue
 
                     if (
@@ -111,10 +114,12 @@ async def execute_job():
                         or story["score"] < TOP_STORY_SCORE
                     ):
                         logger.debug("Story score is too low or undefined")
+                        tasks.remove(task)
                         continue
 
                     if story.get("deleted", False):
-                        logger.info("Story is deleted")
+                        tasks.remove(task)
+                        logger.debug("Story is deleted")
                         continue
 
                     now = datetime.datetime.now()
@@ -146,7 +151,12 @@ async def execute_job():
                         f"`- posted: {display_time} ago`\n\n"
                     )
                     if story.get("url", None):
-                        msg += "[" + f"[Read]({story['url']})" + "]"
+                        u = tldextract.extract(story["url"])
+                        domain = u.domain
+                        if u.suffix:
+                            domain += "." + u.suffix
+
+                        msg += "Read: |" + f"[{domain}]({story['url']})" + "|"
 
                     markup = InlineKeyboardMarkup()
                     markup.row_width = 1
