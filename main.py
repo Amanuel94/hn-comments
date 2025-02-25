@@ -3,6 +3,7 @@ import atexit
 import datetime
 import aiohttp
 from flask import Flask, request
+
 import threading
 
 from telebot.types import Update
@@ -12,6 +13,7 @@ from bot.commands import cmds
 
 from bot.api import get_info
 from bot.config import (
+    API_TOKEN,
     BASE_API_URL,
     CHANNEL_ID,
     DEVELOPMENT,
@@ -23,6 +25,7 @@ from bot.config import (
     HOST,
     PORT,
     WEBHOOK_URL,
+    WEBHOOK_ROUTE,
     cache,
 )
 from bot.middleware import resetter
@@ -33,7 +36,7 @@ import tldextract
 
 async def config_webhook():
 
-    res = await bot.set_webhook(WEBHOOK_URL)
+    res = await bot.set_webhook(WEBHOOK_URL + WEBHOOK_ROUTE)
     if not res:
         raise Exception("Couldn't set webhook")
     info = await bot.get_webhook_info()
@@ -49,10 +52,11 @@ app = Flask(__name__)
 setup()
 
 
-@app.route("/webhook", methods=["POST"])
+@app.route(f"/{WEBHOOK_ROUTE}", methods=["POST"])
 @resetter
 async def webhook():
     logger.debug("Getting request...")
+    logger.debug(request.headers)
 
     if request.method == "POST":
         update = Update.de_json(request.get_json(force=True))
@@ -219,6 +223,15 @@ async def execute_job():
 
 @app.route("/cron", methods=["GET", "HEAD"])
 async def cron():
+    logger.debug("Getting cron request...")
+    logger.debug(request.headers)
+    try:
+        token = request.authorization.password
+    except AttributeError:
+        return "Unauthorized", 401
+
+    if token is None or token != API_TOKEN:
+        return "Unauthorized", 401
 
     thread = threading.Thread(target=lambda: asyncio.run(execute_job()))
     thread.daemon = True

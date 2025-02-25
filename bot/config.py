@@ -11,6 +11,8 @@ API_TOKEN = os.getenv("API_TOKEN")
 DB_NAME = os.getenv("DB_NAME")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 MONGO_URL = os.getenv("MONGO_URL")
+WEBHOOK_ROUTE = os.getenv("WEBHOOK_ROUTE")
+
 MONGO_DB_NAME = "mongo_hn_comments"
 if DEVELOPMENT == "True":
     CHANNEL_ID = int(os.getenv("DEV_CHANNEL_ID"))
@@ -32,7 +34,7 @@ CACHE_PORT = 11211
 TG_BOT_CALLBACK_LINK = "https://t.me/hn_comments_bot?start={0}"
 
 if DEVELOPMENT == "True":
-    WEBHOOK_URL = "https://yellow-windows-sniff.loca.lt/webhook"
+    WEBHOOK_URL = "https://icy-kids-boil.loca.lt/"
 
 
 bot = AsyncTeleBot(API_TOKEN)
