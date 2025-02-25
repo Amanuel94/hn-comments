@@ -34,7 +34,7 @@ CACHE_PORT = 11211
 TG_BOT_CALLBACK_LINK = "https://t.me/hn_comments_bot?start={0}"
 
 if DEVELOPMENT == "True":
-    WEBHOOK_URL = "https://icy-kids-boil.loca.lt/"
+    WEBHOOK_URL = "https://mighty-shoes-film.loca.lt/"
 
 
 bot = AsyncTeleBot(API_TOKEN)

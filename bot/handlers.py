@@ -147,6 +147,49 @@ async def set_page_size(db: Database, userid, page_size):
     return res
 
 
+async def fetch_bookmarks(
+    chat_id,
+):
+    try:
+        with MongoDatabase(MONGO_DB_NAME) as db:
+            res = await list_bookmarks(db, chat_id)
+            if not res:
+                await bot.send_message(chat_id, text="No bookmarks found")
+                return
+
+            msg = "Bookmarks:\n\n"
+            tasks = [asyncio.create_task(get_info(row["iid"])) for row in res]
+            for i, row in enumerate(res):
+                iid = row["iid"]
+
+                story = await tasks[i]
+                if (story.status_code != 200) or (not story.content):
+                    logger.warning(f"Failed to fetch story: {iid} - bookmarks")
+                    continue
+
+                story = json.loads(story.content)
+                if story["type"] != "comment":
+                    story_title = story["title"]
+                else:
+                    story_title = story["text"][:50] + (
+                        "..." if len(story["text"]) > 25 else ""
+                    )
+                type = story["type"]
+                delete_cb_link = TG_BOT_CALLBACK_LINK.format(f"del_{iid}")
+                visite_site_link = item_url(iid)
+                msg += f"_{type[0]}_: [{story_title}]({item_url(iid)})\n [visit]({visite_site_link}) | [remove]({delete_cb_link})\n\n"
+            msg = parse_xml(msg)
+            await bot.send_message(
+                chat_id,
+                text=msg,
+                parse_mode="Markdown",
+                disable_web_page_preview=True,
+            )
+    except Exception as e:
+        logger.error(f"An error occurred: {str(e)} - bookmarks")
+        await bot.send_message(chat_id, text="An unknown error occured")
+
+
 # handlers
 
 
@@ -278,6 +321,8 @@ async def bookmark(message):
                 return
 
         await bot.send_message(message.chat.id, text="Story bookmarked")
+        await fetch_bookmarks(message.chat.id)
+
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - bookmark")
         await bot.send_message(message.chat.id, text="An unknown error occured")
@@ -286,44 +331,7 @@ async def bookmark(message):
 @bot.message_handler(commands=[cmds["bookmarks"]["name"]])
 @rate_limiter
 async def bookmarks(message):
-    try:
-        with MongoDatabase(MONGO_DB_NAME) as db:
-            res = await list_bookmarks(db, message.chat.id)
-            if not res:
-                await bot.send_message(message.chat.id, text="No bookmarks found")
-                return
-
-            msg = "Bookmarks:\n\n"
-            tasks = [asyncio.create_task(get_info(row["iid"])) for row in res]
-            for i, row in enumerate(res):
-                iid = row["iid"]
-
-                story = await tasks[i]
-                if (story.status_code != 200) or (not story.content):
-                    logger.warning(f"Failed to fetch story: {iid} - bookmarks")
-                    continue
-
-                story = json.loads(story.content)
-                if story["type"] != "comment":
-                    story_title = story["title"]
-                else:
-                    story_title = story["text"][:50] + (
-                        "..." if len(story["text"]) > 25 else ""
-                    )
-                type = story["type"]
-                delete_cb_link = TG_BOT_CALLBACK_LINK.format(f"del_{iid}")
-                visite_site_link = item_url(iid)
-                msg += f"_{type[0]}_: [{story_title}]({item_url(iid)})\n [visit]({visite_site_link}) | [remove]({delete_cb_link})\n\n"
-            msg = parse_xml(msg)
-            await bot.send_message(
-                message.chat.id,
-                text=msg,
-                parse_mode="Markdown",
-                disable_web_page_preview=True,
-            )
-    except Exception as e:
-        logger.error(f"An error occurred: {str(e)} - bookmarks")
-        await bot.send_message(message.chat.id, text="An unknown error occured")
+    await fetch_bookmarks(message.chat.id)
 
 
 @bot.message_handler(commands=[cmds["delete"]["name"]])

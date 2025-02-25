@@ -230,7 +230,7 @@ async def cron():
     except AttributeError:
         return "Unauthorized", 401
 
-    if token is None or token != API_TOKEN:
+    if token != API_TOKEN:
         return "Unauthorized", 401
 
     thread = threading.Thread(target=lambda: asyncio.run(execute_job()))
