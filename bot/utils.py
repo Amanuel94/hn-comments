@@ -1,6 +1,7 @@
 import html
 from datetime import datetime
 from bs4 import BeautifulSoup
+import re
 
 from .config import HN_URL, logger
 
@@ -20,12 +21,17 @@ def get_args(msg, delimiter=" "):
 def template(luser, karma, by, text, time):
     try:
         time = int(time)
-        time = datetime.fromtimestamp(time).strftime("%Y-%m-%d %H:%M:%S")
+        display_date = datetime.fromtimestamp(time).strftime("%b, %d")
+        display_time = datetime.fromtimestamp(time).strftime("%I:%M %p")
+
+        url_pattern = re.compile(r"(https?://\S+)", re.DOTALL)
+        text = url_pattern.sub(r"[\1](\1)", text)
+
         msg = ""
-        msg += f"By **[{by}]({luser})**  ⭐️ {karma} \n"
+        msg += f"By [{by}]({luser}) ⭐️ {karma} \n"
         msg += "\n"
-        msg += f"{text}\n\n"
-        msg += f"**{time}**\n"
+        msg += f"{text}   \n\n"
+        msg += f"{display_date} -  {display_time}\n"
         return msg
     except Exception as e:
         return logger.error(f"An error occurred: {str(e)} - template")

@@ -252,15 +252,6 @@ class MongoDatabase(ContextDecorator):
             )
             return False
 
-    def post_story(self, story):
-        try:
-            self.stories.insert_one({"id": str(story)})
-            logger.info(f"Record inserted: story={story}")
-            return True
-        except Exception as e:
-            logger.error(f"Unexpected error: {e} - post_story: story={story}")
-            return False
-
     def post_stories(self, stories):
         try:
             self.stories.insert_many([{"id": str(story)} for story in stories])
@@ -268,17 +259,6 @@ class MongoDatabase(ContextDecorator):
             return True
         except Exception as e:
             logger.error(f"Unexpected error: {e} - post_stories: stories={stories}")
-
-    def search_story(self, story_id):
-        try:
-            rows = list(self.stories.find({"id": str(story_id)}))
-            if not rows:
-                return []
-            logger.info(f"Record found: story_id={story_id}, rows={rows}")
-            return rows[0]
-        except Exception as e:
-            logger.error(f"Unexpected error: {e} - search_story: story_id={story_id}")
-            return []
 
     def search_stories(self, story_ids):
         try:

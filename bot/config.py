@@ -32,7 +32,7 @@ CACHE_PORT = 11211
 TG_BOT_CALLBACK_LINK = "https://t.me/hn_comments_bot?start={0}"
 
 if DEVELOPMENT == "True":
-    WEBHOOK_URL = "https://polite-clowns-camp.loca.lt/webhook"
+    WEBHOOK_URL = "https://yellow-windows-sniff.loca.lt/webhook"
 
 
 bot = AsyncTeleBot(API_TOKEN)
