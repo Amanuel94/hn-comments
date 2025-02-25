@@ -28,17 +28,16 @@ TIME_FRAME = 60  # seconds
 TOP_STORY_SCORE = 150
 HOST = "0.0.0.0"
 PORT = 8443
-CACHE_HOST = "127.0.0.1"
-CACHE_PORT = 11211
+GENERIC_ERROR_MESSAGE = "Something went wrong. Please try again later."
 
 TG_BOT_CALLBACK_LINK = "https://t.me/hn_comments_bot?start={0}"
 
 if DEVELOPMENT == "True":
-    WEBHOOK_URL = "https://mighty-shoes-film.loca.lt/"
+    WEBHOOK_URL = "https://cold-toes-shine.loca.lt/"
 
 
 bot = AsyncTeleBot(API_TOKEN)
-cache = Client((CACHE_HOST, CACHE_PORT))
+
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG if DEVELOPMENT == "True" else logging.WARNING)

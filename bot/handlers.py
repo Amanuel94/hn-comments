@@ -8,6 +8,7 @@ from .commands import cmds
 from .config import (
     DB_NAME,
     DEFAULT_PAGE_SIZE,
+    GENERIC_ERROR_MESSAGE,
     TG_BOT_CALLBACK_LINK,
     bot,
     logger,
@@ -28,7 +29,7 @@ async def list_comments(iid, message: Message, page=0):
         await bot.edit_message_text(
             chat_id=message.chat.id,
             message_id=message.message_id,
-            text="An error occurred while fetching comments",
+            text="Failed to fetch story. Please check the story id is correct",
         )
         return
 
@@ -58,7 +59,7 @@ async def list_comments(iid, message: Message, page=0):
             await bot.edit_message_text(
                 chat_id=message.chat.id,
                 message_id=message.message_id,
-                text=f"*Story: {title}*\n*Comments {page+1} - {page+page_size}*",
+                text=f"*Story: {title}*\n*Comments* `{page+1} - {page+page_size}`",
                 parse_mode="Markdown",
             )
 
@@ -177,7 +178,7 @@ async def fetch_bookmarks(
                 type = story["type"]
                 delete_cb_link = TG_BOT_CALLBACK_LINK.format(f"del_{iid}")
                 visite_site_link = item_url(iid)
-                msg += f"_{type[0]}_: [{story_title}]({item_url(iid)})\n [visit]({visite_site_link}) | [remove]({delete_cb_link})\n\n"
+                msg += f"{i + 1}. [{story_title}]({item_url(iid)})\n [🔗 visit]({visite_site_link}) | [🗑 remove]({delete_cb_link})\n\n"
             msg = parse_xml(msg)
             await bot.send_message(
                 chat_id,
@@ -187,7 +188,7 @@ async def fetch_bookmarks(
             )
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - bookmarks")
-        await bot.send_message(chat_id, text="An unknown error occured")
+        await bot.send_message(chat_id, text=GENERIC_ERROR_MESSAGE)
 
 
 # handlers
@@ -225,7 +226,7 @@ async def send_welcome(message):
 
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - send_welcome")
-        await bot.send_message(message.chat.id, text=f"An unknown error occured")
+        await bot.send_message(message.chat.id, text=fGENERIC_ERROR_MESSAGE)
         return
 
 
@@ -253,7 +254,7 @@ async def get_comments(message):
         await list_comments(iid, message, page=page)
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - get_comments")
-        await bot.send_message(message.chat.id, text="An unknown error occured")
+        await bot.send_message(message.chat.id, text=GENERIC_ERROR_MESSAGE)
 
 
 @bot.callback_query_handler(
@@ -266,7 +267,7 @@ async def list_callback(call):
         await list_comments(iid, call.message, page=page)
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - list_callback")
-        await bot.send_message(call.message.chat.id, text="An unknown error occured")
+        await bot.send_message(call.message.chat.id, text=GENERIC_ERROR_MESSAGE)
 
 
 @bot.callback_query_handler(
@@ -280,7 +281,7 @@ async def bookmark_callback(call):
         await bot.send_message(call.message.chat.id, text="Item bookmarked")
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - bookmark_callback")
-        await bot.send_message(call.message.chat.id, text="An unknown error occured")
+        await bot.send_message(call.message.chat.id, text=GENERIC_ERROR_MESSAGE)
 
 
 @bot.message_handler(commands=[cmds["bookmark"]["name"]])
@@ -325,7 +326,7 @@ async def bookmark(message):
 
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - bookmark")
-        await bot.send_message(message.chat.id, text="An unknown error occured")
+        await bot.send_message(message.chat.id, text=GENERIC_ERROR_MESSAGE)
 
 
 @bot.message_handler(commands=[cmds["bookmarks"]["name"]])
@@ -359,7 +360,7 @@ async def delete(message):
 
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - delete")
-        await bot.send_message(message.chat.id, text="An unknown error occured")
+        await bot.send_message(message.chat.id, text=GENERIC_ERROR_MESSAGE)
 
 
 @bot.message_handler(commands=[cmds["setpage"]["name"]])
@@ -393,7 +394,7 @@ async def set_page(message):
         await bot.send_message(message.chat.id, text="Page size set")
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - set_page")
-        await bot.send_message(message.chat.id, text="An unknown error occured")
+        await bot.send_message(message.chat.id, text=GENERIC_ERROR_MESSAGE)
 
 
 @bot.message_handler(commands=[cmds["deleteall"]["name"]])
@@ -411,4 +412,4 @@ async def delete_all(message):
         await bot.send_message(message.chat.id, text="All bookmarks deleted")
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - delete_all")
-        await bot.send_message(message.chat.id, text="An unknown error occured")
+        await bot.send_message(message.chat.id, text=GENERIC_ERROR_MESSAGE)
