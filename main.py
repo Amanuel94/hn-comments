@@ -168,13 +168,13 @@ async def execute_job():
                             ),
                         ),
                         InlineKeyboardButton(
-                            text="Browse Comments",
+                            text="Comments",
                             url=TG_BOT_CALLBACK_LINK.format(
                                 f"{cmds['list']['name']}_" + str(story["id"])
                             ),
                         ),
                         InlineKeyboardButton(
-                            text="Read on site",
+                            text="Read on HN",
                             url=f"https://news.ycombinator.com/item?id={story['id']}",
                         ),
                         row_width=2,
