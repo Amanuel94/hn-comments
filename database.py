@@ -3,7 +3,7 @@ from contextlib import ContextDecorator
 
 from pymongo import MongoClient
 
-from bot.config import MONGO_URL, logger, cache
+from config import MONGO_URL, logger
 
 
 class Database(ContextDecorator):

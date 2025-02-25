@@ -7,12 +7,10 @@ from flask import Flask, request
 import threading
 
 from telebot.types import Update
-from telebot.util import quick_markup
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from bot.commands import cmds
 
-from bot.api import get_info
-from bot.config import (
+from config import (
     API_TOKEN,
     BASE_API_URL,
     CHANNEL_ID,
@@ -20,13 +18,12 @@ from bot.config import (
     MONGO_DB_NAME,
     TG_BOT_CALLBACK_LINK,
     TOP_STORY_SCORE,
-    bot,
-    logger,
     HOST,
     PORT,
     WEBHOOK_URL,
     WEBHOOK_ROUTE,
-    cache,
+    bot,
+    logger,
 )
 from bot.middleware import resetter
 from bot.utils import slug
@@ -61,7 +58,7 @@ async def webhook():
     if request.method == "POST":
         update = Update.de_json(request.get_json(force=True))
         logger.debug("Procesing Updates...")
-        await bot.process_new_updates(updates=[update])
+        res = await bot.process_new_updates(updates=[update])
         return "OK"
 
 
@@ -253,7 +250,6 @@ def create_app():
 @atexit.register
 def teardown():
     logger.debug("Closing client connection")
-    # logger.debug(asyncio.run(delete_webhook()))
     logger.debug(asyncio.run(bot.close_session()))
 
 

@@ -2,7 +2,6 @@ from dotenv import load_dotenv
 import logging
 import os
 from telebot.async_telebot import AsyncTeleBot
-from pymemcache.client.base import Client
 
 load_dotenv()
 
@@ -33,7 +32,7 @@ GENERIC_ERROR_MESSAGE = "Something went wrong. Please try again later."
 TG_BOT_CALLBACK_LINK = "https://t.me/hn_comments_bot?start={0}"
 
 if DEVELOPMENT == "True":
-    WEBHOOK_URL = "https://cold-toes-shine.loca.lt/"
+    WEBHOOK_URL = "https://modern-experts-relate.loca.lt/"
 
 
 bot = AsyncTeleBot(API_TOKEN)

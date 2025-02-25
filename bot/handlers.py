@@ -1,12 +1,10 @@
 import asyncio, json
-import telebot
 from telebot.util import quick_markup
 from telebot.types import Message
 
 from .api import get_comment, get_info, get_user_karma
 from .commands import cmds
-from .config import (
-    DB_NAME,
+from config import (
     DEFAULT_PAGE_SIZE,
     GENERIC_ERROR_MESSAGE,
     TG_BOT_CALLBACK_LINK,
@@ -90,10 +88,11 @@ async def list_comments(iid, message: Message, page=0):
             logger.warning(f"An error occurred while parsing: {str(e)} - list_comments")
             await bot.reply_to(message, msg, reply_markup=markup)
 
+    cmd = cmds["list"]["name"]
     next_btn = quick_markup(
         {
             f"Next {page_size} comments": {
-                "callback_data": f"list_{iid}_{page+page_size}"
+                "callback_data": f"{cmd}_{iid}_{page+page_size}"
             },
             "Bookmark Story": {"callback_data": f"bookmark_{iid}"},
         },
@@ -226,7 +225,7 @@ async def send_welcome(message):
 
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - send_welcome")
-        await bot.send_message(message.chat.id, text=fGENERIC_ERROR_MESSAGE)
+        await bot.send_message(message.chat.id, text=GENERIC_ERROR_MESSAGE)
         return
 
 
@@ -279,6 +278,7 @@ async def bookmark_callback(call):
         with MongoDatabase(MONGO_DB_NAME) as db:
             await save_story(db, iid, call.message.chat.id)
         await bot.send_message(call.message.chat.id, text="Item bookmarked")
+        await fetch_bookmarks(call.message.chat.id)
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - bookmark_callback")
         await bot.send_message(call.message.chat.id, text=GENERIC_ERROR_MESSAGE)

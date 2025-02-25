@@ -3,7 +3,7 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 import re
 
-from .config import HN_URL, logger
+from config import HN_URL, logger
 
 
 def slug(x: str, kid: int) -> str:

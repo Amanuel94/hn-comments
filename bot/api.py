@@ -1,6 +1,5 @@
-import aiohttp
-import asyncio, json, requests
-from .config import BASE_API_URL
+import json, requests
+from config import BASE_API_URL
 from .utils import slug
 
 

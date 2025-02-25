@@ -1,6 +1,6 @@
 from limits import RateLimitItemPerSecond, storage, strategies
 from telebot.types import Message
-from .config import bot, RATE_LIMIT, TIME_FRAME, logger
+from config import bot, RATE_LIMIT, TIME_FRAME, logger
 
 
 def rate_limiter(func):
