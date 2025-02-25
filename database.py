@@ -253,6 +253,8 @@ class MongoDatabase(ContextDecorator):
             return False
 
     def post_stories(self, stories):
+        if not stories:
+            return
         try:
             self.stories.insert_many([{"id": str(story)} for story in stories])
             logger.info(f"Record inserted: stories={stories}")
