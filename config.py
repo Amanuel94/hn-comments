@@ -29,7 +29,7 @@ HOST = "0.0.0.0"
 PORT = 8443
 GENERIC_ERROR_MESSAGE = "Something went wrong. Please try again later."
 
-TG_BOT_CALLBACK_LINK = "https://t.me/hn_comments_bot?start={0}"
+TG_BOT_CALLBACK_LINK = "t.me/hackernews_saver_bot?start={0}"
 
 if DEVELOPMENT == "True":
     WEBHOOK_URL = "https://modern-experts-relate.loca.lt/"
