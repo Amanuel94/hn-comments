@@ -8,6 +8,7 @@ import threading
 
 from telebot.types import Update
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from bot.api import get_user_karma
 from bot.commands import cmds
 
 from config import (
@@ -15,6 +16,7 @@ from config import (
     BASE_API_URL,
     CHANNEL_ID,
     DEVELOPMENT,
+    GROUP_ID,
     MONGO_DB_NAME,
     TG_BOT_CALLBACK_LINK,
     TOP_STORY_SCORE,
@@ -26,7 +28,7 @@ from config import (
     logger,
 )
 from bot.middleware import resetter
-from bot.utils import slug
+from bot.utils import parse_xml, slug, template, user_url
 from database import Database, MongoDatabase
 import tldextract
 
@@ -82,6 +84,12 @@ def filter_posted(all_top_stories):
         return set(all_top_stories) - set(db.search_stories(all_top_stories))
 
 
+# async def fetch_comments(comment_id, session):
+#     url = BASE_API_URL + f"item/{comment_id}.json"
+#     resp = await make_req(url, session)
+#     return resp.con
+
+
 async def execute_job():
 
     logger.debug("Getting cron request...")
@@ -90,6 +98,8 @@ async def execute_job():
     async with aiohttp.ClientSession() as hn_session:
         all_top_stories = await make_req(url, hn_session)
         top_stories = filter_posted(all_top_stories)
+        if DEVELOPMENT == "True":
+            top_stories = [43200065]
 
         urls = list(map(lambda x: BASE_API_URL + slug("item", x), top_stories))
         tasks = [asyncio.create_task(make_req(url, hn_session)) for url in urls]
@@ -188,6 +198,7 @@ async def execute_job():
                         "reply_markup": markup.to_dict(),
                     }
 
+                    post_id = None
                     async with tg_session.post(
                         f"https://api.telegram.org/bot{bot.token}/sendMessage",
                         json=payload,
@@ -210,6 +221,93 @@ async def execute_job():
                         else:
                             posted.append(str(story["id"]))
                             tasks.remove(task)
+                            post_id = (
+                                (await response.json(encoding=response.get_encoding()))
+                                .get("result", {})
+                                .get("message_id", None)
+                            )
+                            logger.debug([post_id, type(post_id)])
+
+                    # fetch comments
+                    comment_ids = story.get("kids", [])
+                    urls = list(
+                        map(lambda x: BASE_API_URL + slug("item", x), comment_ids)
+                    )
+                    tasks2 = [
+                        asyncio.create_task(make_req(url, hn_session)) for url in urls
+                    ]
+                    comments = await asyncio.gather(*tasks2)
+                    comments = list(
+                        filter(
+                            lambda x: x is not None and not x.get("deleted"), comments
+                        )
+                    )
+                    payload2 = {
+                        "chat_id": CHANNEL_ID,
+                        "text": "Comments",
+                        "reply_to_message_id": post_id,
+                    }
+                    message_id = None
+                    async with tg_session.post(
+                        f"https://api.telegram.org/bot{bot.token}/sendMessage",
+                        json=payload2,
+                    ) as response:
+                        if response.status != 200:
+                            logger.error(
+                                "Failed to send message: %s", await response.text()
+                            )
+
+                            response_data = await response.json(
+                                encoding=response.get_encoding()
+                            )
+                            if response_data.get("error_code", None) == 429:
+                                logger.error("Rate limit exceeded")
+                                await asyncio.sleep(
+                                    response_data["parameters"]["retry_after"] + 1
+                                )
+                                return
+
+                        else:
+                            message = (
+                                await response.json(encoding=response.get_encoding())
+                            ).get("result", {})
+                            # logger.debug([message, type(message)])
+
+                    for comment in comments:
+                        logger.debug(comment.get("id"))
+                        msg = template(
+                            user_url(comment.get("by", "")),
+                            get_user_karma(comment.get("by", "")),
+                            comment.get("by", "user not found"),
+                            parse_xml(comment.get("text", "text not found")),
+                            comment["time"],
+                        )
+
+                        payload = {
+                            "chat_id": GROUP_ID,
+                            "text": msg,
+                            "parse_mode": "Markdown",
+                            "reply_to_message_id": message,
+                        }
+
+                        async with tg_session.post(
+                            f"https://api.telegram.org/bot{bot.token}/sendMessage",
+                            json=payload,
+                        ) as response:
+                            if response.status != 200:
+                                logger.error(
+                                    "Failed to send message: %s", await response.text()
+                                )
+
+                                response_data = await response.json(
+                                    encoding=response.get_encoding()
+                                )
+                                if response_data.get("error_code", None) == 429:
+                                    logger.error("Rate limit exceeded")
+                                    await asyncio.sleep(
+                                        response_data["parameters"]["retry_after"] + 1
+                                    )
+                                    return
 
             try:
                 with MongoDatabase(MONGO_DB_NAME) as db:
@@ -221,14 +319,14 @@ async def execute_job():
 @app.route("/cron", methods=["GET", "HEAD"])
 async def cron():
     logger.debug("Getting cron request...")
-    logger.debug(request.headers)
-    try:
-        token = request.authorization.password
-    except AttributeError:
-        return "Unauthorized", 401
+    # logger.debug(request.headers)
+    # try:
+    #     token = request.authorization.password
+    # except AttributeError:
+    #     return "Unauthorized", 401
 
-    if token != API_TOKEN:
-        return "Unauthorized", 401
+    # if token != API_TOKEN:
+    #     return "Unauthorized", 401
 
     thread = threading.Thread(target=lambda: asyncio.run(execute_job()))
     thread.daemon = True

@@ -13,10 +13,8 @@ MONGO_URL = os.getenv("MONGO_URL")
 WEBHOOK_ROUTE = os.getenv("WEBHOOK_ROUTE")
 
 MONGO_DB_NAME = "mongo_hn_comments"
-if DEVELOPMENT == "True":
-    CHANNEL_ID = int(os.getenv("DEV_CHANNEL_ID"))
-else:
-    CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
+CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
+GROUP_ID = int(os.getenv("GROUP_ID"))
 
 DEFAULT_PAGE_SIZE = 10
 API_VERSION = "v0"
