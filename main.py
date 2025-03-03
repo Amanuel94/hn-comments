@@ -15,6 +15,8 @@ from config import (
     BASE_API_URL,
     CHANNEL_ID,
     DEVELOPMENT,
+    FORWARD_SIGNATURE,
+    HN_URL,
     MONGO_DB_NAME,
     TG_BOT_CALLBACK_LINK,
     TOP_STORY_SCORE,
@@ -90,6 +92,8 @@ async def execute_job():
     async with aiohttp.ClientSession() as hn_session:
         all_top_stories = await make_req(url, hn_session)
         top_stories = filter_posted(all_top_stories)
+        if DEVELOPMENT == "True":
+            top_stories = [43200065]
 
         urls = list(map(lambda x: BASE_API_URL + slug("item", x), top_stories))
         tasks = [asyncio.create_task(make_req(url, hn_session)) for url in urls]
@@ -153,10 +157,24 @@ async def execute_job():
                     if story.get("url", None):
                         u = tldextract.extract(story["url"])
                         domain = u.domain
-                        if u.suffix:
-                            domain += "." + u.suffix
 
-                        msg += "Read: |" + f"[{domain}]({story['url']})" + "|"
+                        if story.get("url", None):
+                            msg += "\>" + f"[{domain}]({story['url']})" + "\n"
+                        msg += "\>" + "[hacker news]({0})\n".format(
+                            HN_URL + slug("item", story["id"])
+                        )
+                        msg += "\>" + "[save]({0})\n".format(
+                            TG_BOT_CALLBACK_LINK.format(
+                                f"{cmds['bookmark']['name']}_" + str(story["id"])
+                            )
+                        )
+                        msg += "\>" + "[comments]({0})\n\n".format(
+                            TG_BOT_CALLBACK_LINK.format(
+                                f"{cmds['list']['name']}_" + str(story["id"])
+                            )
+                        )
+
+                        msg += f"\[{story['id']}]"
 
                     markup = InlineKeyboardMarkup()
                     markup.row_width = 1
@@ -185,7 +203,7 @@ async def execute_job():
                         "chat_id": CHANNEL_ID,
                         "text": msg,
                         "parse_mode": "Markdown",
-                        "reply_markup": markup.to_dict(),
+                        # "reply_markup": markup.to_dict(),
                     }
 
                     async with tg_session.post(
@@ -221,14 +239,15 @@ async def execute_job():
 @app.route("/cron", methods=["GET", "HEAD"])
 async def cron():
     logger.debug("Getting cron request...")
-    logger.debug(request.headers)
-    try:
-        token = request.authorization.password
-    except AttributeError:
-        return "Unauthorized", 401
+    if DEVELOPMENT == "False":
+        logger.debug(request.headers)
+        try:
+            token = request.authorization.password
+        except AttributeError:
+            return "Unauthorized", 401
 
-    if token != API_TOKEN:
-        return "Unauthorized", 401
+        if token != API_TOKEN:
+            return "Unauthorized", 401
 
     thread = threading.Thread(target=lambda: asyncio.run(execute_job()))
     thread.daemon = True

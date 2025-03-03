@@ -1,3 +1,4 @@
+import asyncio
 from dotenv import load_dotenv
 import logging
 import os
@@ -13,10 +14,7 @@ MONGO_URL = os.getenv("MONGO_URL")
 WEBHOOK_ROUTE = os.getenv("WEBHOOK_ROUTE")
 
 MONGO_DB_NAME = "mongo_hn_comments"
-if DEVELOPMENT == "True":
-    CHANNEL_ID = int(os.getenv("DEV_CHANNEL_ID"))
-else:
-    CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
+CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 
 DEFAULT_PAGE_SIZE = 10
 API_VERSION = "v0"
@@ -30,12 +28,14 @@ PORT = 8443
 GENERIC_ERROR_MESSAGE = "Something went wrong. Please try again later."
 
 TG_BOT_CALLBACK_LINK = "t.me/hackernews_saver_bot?start={0}"
+FORWARD_SIGNATURE = "Hacker News Saver"
 
 if DEVELOPMENT == "True":
-    WEBHOOK_URL = "https://modern-experts-relate.loca.lt/"
-
+    WEBHOOK_URL = "https://whole-symbols-occur.loca.lt/"
+    FORWARD_SIGNATURE = FORWARD_SIGNATURE + ":DEV"
 
 bot = AsyncTeleBot(API_TOKEN)
+
 
 # Logger setup
 logger = logging.getLogger(__name__)

@@ -1,4 +1,5 @@
 import asyncio, json
+import re
 from telebot.util import quick_markup
 from telebot.types import Message
 
@@ -6,6 +7,7 @@ from .api import get_comment, get_info, get_user_karma
 from .commands import cmds
 from config import (
     DEFAULT_PAGE_SIZE,
+    FORWARD_SIGNATURE,
     GENERIC_ERROR_MESSAGE,
     TG_BOT_CALLBACK_LINK,
     bot,
@@ -17,31 +19,37 @@ from .utils import get_args, template, user_url, item_url, parse_xml
 from database import Database, MongoDatabase
 
 
-async def list_comments(iid, message: Message, page=0):
+async def list_comments(iid, message: Message, page=0, in_bot=True):
 
-    message = await bot.send_message(message.chat.id, text="Fetching comments...")
+    if in_bot:
+        message = await bot.send_message(message.chat.id, text="Fetching comments...")
 
     res = await asyncio.create_task(get_info(iid))
     if res.status_code != 200:
         logger.error(f"An error occurred: {res.status_code} - list_comments")
-        await bot.edit_message_text(
-            chat_id=message.chat.id,
-            message_id=message.message_id,
-            text="Failed to fetch story. Please check the story id is correct",
-        )
+        if in_bot:
+            await bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=message.message_id,
+                text="Failed to fetch story. Please check the story id is correct",
+            )
         return
 
     item = json.loads(res.content)
     with MongoDatabase(MONGO_DB_NAME) as db:
         page_size = await get_page_size(db, message.chat.id) or DEFAULT_PAGE_SIZE
-    kids, title = item["kids"][page : page + page_size], item["title"]
+
+    kids, title = item["kids"], item["title"]
+    if in_bot:
+        kids = kids[page : page + page_size]
 
     if not kids:
-        await bot.edit_message_text(
-            chat_id=message.chat.id,
-            message_id=message.message_id,
-            text="No comments found" if page == 0 else "No more comments",
-        )
+        if in_bot:
+            await bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=message.message_id,
+                text="No comments found" if page == 0 else "No more comments",
+            )
         return
 
     logger.debug("Fetching comments...")
@@ -53,7 +61,7 @@ async def list_comments(iid, message: Message, page=0):
             logger.error(f"An error occurred: {comment.status_code} - list_comments")
             continue
 
-        if i == 0:
+        if i == 0 and in_bot:
             await bot.edit_message_text(
                 chat_id=message.chat.id,
                 message_id=message.message_id,
@@ -84,6 +92,7 @@ async def list_comments(iid, message: Message, page=0):
 
         try:
             await bot.reply_to(message, msg, parse_mode="Markdown", reply_markup=markup)
+
         except Exception as e:
             logger.warning(f"An error occurred while parsing: {str(e)} - list_comments")
             await bot.reply_to(message, msg, reply_markup=markup)
@@ -98,9 +107,10 @@ async def list_comments(iid, message: Message, page=0):
         },
         row_width=2,
     )
-    await bot.send_message(
-        message.chat.id, text=f"What do you want to do?", reply_markup=next_btn
-    )
+    if in_bot:
+        await bot.send_message(
+            message.chat.id, text=f"What do you want to do?", reply_markup=next_btn
+        )
 
 
 async def save_story(db: Database, iid, userid):
@@ -413,3 +423,16 @@ async def delete_all(message):
     except Exception as e:
         logger.error(f"An error occurred: {str(e)} - delete_all")
         await bot.send_message(message.chat.id, text=GENERIC_ERROR_MESSAGE)
+
+
+@bot.message_handler(content_types=["text"])
+@rate_limiter
+async def hn_comments(message: Message):
+    # logger.debug(map(lambda x: x["url"] if "url" in x else ""))
+    if message.forward_signature == FORWARD_SIGNATURE:
+        id = message.text[message.text.rindex("[") + 1 : -1]
+        if id:
+            await list_comments(int(id), message=message, in_bot=False)
+
+        else:
+            logger.error("Could not scrap item id")
